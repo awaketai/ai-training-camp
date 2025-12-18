@@ -13,8 +13,8 @@
 
 ## Path Conventions
 
-- Backend: `backend/src/db_query/`
-- Frontend: `frontend/src/`
+- Backend: `db_query/backend/src/db_query/`
+- Frontend: `db_query/frontend/src/`
 - Database: `db_query/db_query.db`
 
 ---
@@ -23,14 +23,14 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project root directories (backend/, frontend/, db_query/)
-- [ ] T002 Initialize backend Python project with uv in backend/pyproject.toml
-- [ ] T003 [P] Create .python-version file with Python 3.11 in backend/
-- [ ] T004 [P] Initialize frontend Node.js project with package.json in frontend/
-- [ ] T005 [P] Create .env.example file with required environment variables at project root
-- [ ] T006 [P] Create .gitignore file to exclude .env, db files, and build artifacts
-- [ ] T007 [P] Create backend/src/db_query/__init__.py module structure
-- [ ] T008 [P] Create frontend/src/ directory structure (pages/, components/, services/, utils/)
+- [X] T001 Create project root directory (db_query/ with backend/, frontend/ subdirs)
+- [X] T002 Initialize backend Python project with uv in db_query/backend/pyproject.toml
+- [X] T003 [P] Create .python-version file with Python 3.11 in db_query/backend/
+- [X] T004 [P] Initialize frontend Node.js project with package.json in db_query/frontend/
+- [X] T005 [P] Create .env.example file with required environment variables at project root
+- [X] T006 [P] Create .gitignore file to exclude .env, db files, and build artifacts
+- [X] T007 [P] Create db_query/backend/src/db_query/__init__.py module structure
+- [X] T008 [P] Create db_query/frontend/src/ directory structure (pages/, components/, services/, utils/)
 
 ---
 

@@ -5,7 +5,24 @@
       "Bash(.specify/scripts/bash/create-new-feature.sh:*)",
       "Bash(.specify/scripts/bash/setup-plan.sh:*)",
       "Bash(.specify/scripts/bash/update-agent-context.sh:*)",
-      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)"
+      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(node --version:*)",
+      "Bash(npm --version)",
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(if [ -f .gitignore ])",
+      "Bash(then)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(/Users/ashertai/wwwroot/llm/geek-camp/wk2/.specify/scripts/bash/check-prerequisites.sh:*)"
     ]
   }
 }
