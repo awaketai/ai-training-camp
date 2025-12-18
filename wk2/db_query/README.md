@@ -55,6 +55,35 @@ db_query/                               # Project root
 
 ## Quick Start
 
+### Method 1: Using Makefile (Recommended)
+
+The easiest way to manage the project:
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env and set OPENAI_API_KEY
+
+# 2. Install dependencies
+make install
+
+# 3. Start services
+make start
+
+# 4. Check status
+make status
+
+# 5. View logs
+make logs
+
+# 6. Stop services
+make stop
+```
+
+See [MAKEFILE.md](./MAKEFILE.md) for complete documentation or run `make help`.
+
+### Method 2: Manual Setup
+
 ### Prerequisites
 
 - Python 3.11+

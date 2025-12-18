@@ -10,6 +10,35 @@
 
 ## 快速开始
 
+### 方法一：使用 Makefile（推荐）
+
+```bash
+cd db_query
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件设置 OPENAI_API_KEY
+
+# 安装依赖
+make install
+
+# 启动服务（后端 + 前端）
+make start
+
+# 查看服务状态
+make status
+
+# 查看日志
+make logs
+
+# 停止服务
+make stop
+```
+
+更多 Makefile 命令请运行 `make help` 查看。
+
+### 方法二：手动启动
+
 ```bash
 cd db_query
 
