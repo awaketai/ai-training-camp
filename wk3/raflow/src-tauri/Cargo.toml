@@ -1,9 +1,9 @@
 [package]
-name = "example"
+name = "raflow"
 version = "0.1.0"
-description = "An example Tauri app"
-authors = ["Tyr Chen <tyr.chen@gmail.com>"]
-edition = "2024"
+description = "Real-time voice transcription app using Tauri and ElevenLabs Scribe"
+authors = ["RAFlow Team"]
+edition = "2021"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,7 +12,7 @@ publish = false
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "example_lib"
+name = "raflow_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -24,15 +24,44 @@ chrono = { workspace = true }
 dirs = "6"
 serde = { workspace = true }
 serde_json = { workspace = true }
-tauri = { version = "2", features = ["tray-icon"] }
-tauri-plugin-log = { version = "2", features = ["tracing"] }
-tauri-plugin-opener = { version = "2" }
-tauri-plugin-store = { version = "2" }
-tauri-plugin-window-state = { version = "2" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 app-core = { path = "../app-core" }
+
+# Tauri core
+tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
+tauri-plugin-log = { version = "2", features = ["tracing"] }
+tauri-plugin-opener = { version = "2" }
+tauri-plugin-store = { version = "2" }
+tauri-plugin-window-state = { version = "2" }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+
+# Async runtime
+futures-util = "0.3"
+
+# WebSocket
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
+
+# Serialization
+base64 = "0.22"
+
+# Audio processing
+cpal = "0.17"
+rubato = "0.16"
+
+# Input/System integration
+enigo = "0.2"
+active-win-pos-rs = "0.9"
+
+# macOS specific
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
+objc = "0.2"
+core-graphics = "0.24"
 
 [features]
 # by default Tauri runs in production mode

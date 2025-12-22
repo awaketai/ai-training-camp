@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(cargo check:*)",
+      "Bash(cat:*)",
+      "Bash(chmod:*)",
+      "Bash(test:*)"
     ]
   }
 }

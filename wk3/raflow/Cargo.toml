@@ -1,6 +1,6 @@
 [workspace]
 members = ["src-tauri", "app-core"]
-resolver = "3"
+resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1"
