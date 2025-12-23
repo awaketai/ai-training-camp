@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use tauri::{command, AppHandle, Emitter, State};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::audio::{AudioCapture, AudioResampler, DeviceInfo};
-use crate::input::{get_active_window, InjectionStrategy, TextInjector, WindowInfo};
+use crate::input::{get_active_window, InjectionStrategy, WindowInfo};
 use crate::network::{ServerMessage, WebSocketClient};
 use crate::state::AppState;
 use crate::utils::{
@@ -50,6 +50,7 @@ pub async fn start_recording(
     device_name: Option<String>,
 ) -> Result<(), String> {
     info!("Starting recording with device: {:?}", device_name);
+    info!("API key length: {}", api_key.len());
 
     // Store API key
     *state.api_key.lock().await = Some(api_key.clone());
@@ -57,48 +58,99 @@ pub async fn start_recording(
     // Check if already recording
     let is_recording = *state.is_recording.lock().await;
     if is_recording {
+        error!("Already recording");
         return Err("Already recording".to_string());
     }
 
     // Initialize audio capture
-    let mut capture = AudioCapture::new().map_err(|e| e.to_string())?;
+    info!("Creating audio capture...");
+    let mut capture = AudioCapture::new().map_err(|e| {
+        error!("Failed to create audio capture: {}", e);
+        e.to_string()
+    })?;
 
     if let Some(device) = device_name {
-        capture.set_device(&device).map_err(|e| e.to_string())?;
+        info!("Setting device: {}", device);
+        capture.set_device(&device).map_err(|e| {
+            error!("Failed to set device: {}", e);
+            e.to_string()
+        })?;
     } else {
-        capture.use_default_device().map_err(|e| e.to_string())?;
+        info!("Using default device...");
+        capture.use_default_device().map_err(|e| {
+            error!("Failed to use default device: {}", e);
+            e.to_string()
+        })?;
     }
 
-    let sample_rate = capture.sample_rate().ok_or("No sample rate")?;
+    let sample_rate = capture.sample_rate().ok_or_else(|| {
+        error!("No sample rate available");
+        "No sample rate".to_string()
+    })?;
+    info!("Sample rate: {}", sample_rate);
 
-    // Create channel for audio packets
-    let (audio_tx, mut audio_rx) = tokio::sync::mpsc::channel(100);
+    // Create channel for audio packets (increased capacity for better performance)
+    let (audio_tx, mut audio_rx) = tokio::sync::mpsc::channel(500);
 
     // Start audio stream
-    capture.start_stream(audio_tx).map_err(|e| e.to_string())?;
+    info!("Starting audio stream...");
+    capture.start_stream(audio_tx).map_err(|e| {
+        error!("Failed to start audio stream: {}", e);
+        e.to_string()
+    })?;
+    info!("Audio stream started");
 
     // Initialize resampler (device sample rate -> 16kHz)
+    info!("Creating resampler...");
     let resampler = AudioResampler::new(sample_rate as usize, 16000, 1600)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            error!("Failed to create resampler: {}", e);
+            e.to_string()
+        })?;
+    info!("Resampler created");
 
     // Store in state
     *state.audio_capture.lock().await = Some(capture);
     *state.resampler.lock().await = Some(resampler);
-    *state.is_recording.lock().await = true;
 
-    // Initialize WebSocket client
+    // Initialize WebSocket client BEFORE setting is_recording to true
+    info!("🌐 Attempting WebSocket connection...");
+    info!("🔧 Model: scribe_v2_realtime, Language: zh (Chinese)");
     let mut ws_client = WebSocketClient::new(api_key);
-    let (mut ws_sink, ws_stream) = ws_client.connect().await.map_err(|e| {
-        error!("Failed to connect WebSocket: {}", e);
-        e.to_string()
-    })?;
+    let (mut ws_sink, ws_stream) = match ws_client.connect().await {
+        Ok(streams) => {
+            info!("✅ WebSocket connected successfully!");
+            streams
+        }
+        Err(e) => {
+            error!("❌ WebSocket connection FAILED: {}", e);
+            error!("💡 This might mean scribe_v1 or language_code=cmn is not supported");
+            // Clean up on error
+            *state.audio_capture.lock().await = None;
+            *state.resampler.lock().await = None;
+            return Err(format!("WebSocket connection failed: {}. Please check your API key and model availability.", e));
+        }
+    };
+
+    // Only set is_recording to true AFTER successful WebSocket connection
+    *state.is_recording.lock().await = true;
 
     // Start WebSocket receive loop
     let (server_tx, mut server_rx) = tokio::sync::mpsc::channel(100);
+    let state_for_ws_close = state.inner().clone();
+    let app_for_ws_close = app.clone();
+
     tokio::spawn(async move {
         if let Err(e) = WebSocketClient::receive_loop(ws_stream, server_tx).await {
             error!("WebSocket receive loop error: {}", e);
         }
+
+        // WebSocket closed, stop recording
+        info!("WebSocket closed, stopping recording");
+        *state_for_ws_close.is_recording.lock().await = false;
+
+        // Notify frontend
+        let _ = app_for_ws_close.emit("recording-stopped", "WebSocket connection closed");
     });
 
     // Store WebSocket client
@@ -112,8 +164,21 @@ pub async fn start_recording(
     tokio::spawn(async move {
         let mut buffer = Vec::new();
         const CHUNK_SIZE: usize = 1600; // 100ms at 16kHz
+        let mut was_speaking = false; // Track previous speaking state
+        let mut audio_chunk_count = 0;
+
+        info!("🎤 Audio processing task started");
 
         while let Some(audio_packet) = audio_rx.recv().await {
+            audio_chunk_count += 1;
+
+            // Check audio signal every 100 packets
+            if audio_chunk_count % 100 == 0 {
+                let rms: f32 = audio_packet.iter().map(|x| x * x).sum::<f32>() / audio_packet.len() as f32;
+                let rms = rms.sqrt();
+                info!("📊 Audio input RMS: {:.6} (packet #{})", rms, audio_chunk_count);
+            }
+
             // Check if still recording
             if !*state_clone.is_recording.lock().await {
                 break;
@@ -130,7 +195,7 @@ pub async fn start_recording(
                         while buffer.len() >= CHUNK_SIZE {
                             let chunk: Vec<f32> = buffer.drain(..CHUNK_SIZE).collect();
 
-                            // VAD detection
+                            // VAD detection for audio level monitoring and speech detection
                             let mut vad = state_clone.vad.lock().await;
                             let is_speech = vad.is_speech(&chunk);
                             let audio_level = vad.get_audio_level(&chunk);
@@ -139,13 +204,32 @@ pub async fn start_recording(
                             // Emit audio level to frontend
                             let _ = app_clone.emit("audio-level", audio_level);
 
-                            // Send to WebSocket if speech detected
+                            // Detect speech end (transition from speaking to silence)
+                            let speech_ended = was_speaking && !is_speech;
+                            was_speaking = is_speech;
+
+                            // Always send audio to WebSocket (let server decide what to transcribe)
+                            // Send commit=true when speech ends to finalize the current segment
+                            // Check if still recording before sending
+                            if !*state_clone.is_recording.lock().await {
+                                info!("Recording stopped, breaking audio send loop");
+                                break;
+                            }
+
+                            if let Err(e) =
+                                WebSocketClient::send_audio(&mut ws_sink, &chunk, speech_ended).await
+                            {
+                                error!("Failed to send audio: {}", e);
+                                // Stop recording on send error
+                                *state_clone.is_recording.lock().await = false;
+                                break;
+                            }
+
+                            // Log when speech is detected or ends
                             if is_speech {
-                                if let Err(e) =
-                                    WebSocketClient::send_audio(&mut ws_sink, &chunk).await
-                                {
-                                    error!("Failed to send audio: {}", e);
-                                }
+                                info!("🗣️  Speech detected, audio level: {:.4}", audio_level);
+                            } else if speech_ended {
+                                info!("🔚 Speech ended, sent commit signal");
                             }
                         }
                     }
@@ -156,17 +240,20 @@ pub async fn start_recording(
             }
         }
 
-        info!("Audio processing task ended");
+        info!("🔇 Audio processing task ended");
     });
 
     // Transcript processing task
     let app_clone = app.clone();
     let state_clone = state.inner().clone();
     tokio::spawn(async move {
+        info!("=== Transcript processing task started ===");
         while let Some(msg) = server_rx.recv().await {
+            info!("Received server message: {:?}", msg);
+
             match msg {
                 ServerMessage::PartialTranscript { text, .. } => {
-                    info!("Partial transcript: {}", text);
+                    info!("📝 PARTIAL TRANSCRIPT: \"{}\"", text);
                     *state_clone.current_transcript.lock().await = text.clone();
 
                     let _ = app_clone.emit(
@@ -178,7 +265,19 @@ pub async fn start_recording(
                     );
                 }
                 ServerMessage::CommittedTranscript { text, .. } => {
-                    info!("Committed transcript: {}", text);
+                    info!("✅ COMMITTED TRANSCRIPT: \"{}\"", text);
+                    *state_clone.current_transcript.lock().await = text.clone();
+
+                    let _ = app_clone.emit(
+                        "transcript-update",
+                        serde_json::json!({
+                            "text": text,
+                            "is_final": true,
+                        }),
+                    );
+                }
+                ServerMessage::CommittedTranscriptWithTimestamps { text, .. } => {
+                    info!("✅ COMMITTED TRANSCRIPT (with timestamps): \"{}\"", text);
                     *state_clone.current_transcript.lock().await = text.clone();
 
                     let _ = app_clone.emit(
@@ -190,17 +289,25 @@ pub async fn start_recording(
                     );
                 }
                 ServerMessage::InputError { error_message, .. } => {
-                    error!("API Error: {}", error_message);
+                    error!("❌ API Error: {}", error_message);
                     let _ = app_clone.emit("transcript-error", error_message);
                 }
-                ServerMessage::SessionStarted { session_id, .. } => {
-                    info!("Session started: {}", session_id);
+                ServerMessage::InvalidRequest { error } => {
+                    error!("❌ Invalid Request: {}", error);
+                    let _ = app_clone.emit("transcript-error", error);
+                    // Stop recording on invalid request
+                    *state_clone.is_recording.lock().await = false;
                 }
-                _ => {}
+                ServerMessage::SessionStarted { session_id, model_id } => {
+                    info!("🎬 Session started: {} (model: {})", session_id, model_id);
+                }
+                _ => {
+                    info!("Other message type received: {:?}", msg);
+                }
             }
         }
 
-        info!("Transcript processing task ended");
+        info!("=== Transcript processing task ended ===");
     });
 
     info!("Recording started successfully");
@@ -260,23 +367,19 @@ pub async fn inject_text(
         _ => None,
     });
 
-    // Get or create text injector
-    let mut injector_guard = state.text_injector.lock().await;
-    if injector_guard.is_none() {
-        *injector_guard = Some(TextInjector::new().map_err(|e| {
-            error!("Failed to create text injector: {}", e);
-            e.to_string()
-        })?);
-    }
+    // Get the text injector service
+    let service_guard = state.text_injector_service.lock().await;
 
-    if let Some(injector) = injector_guard.as_mut() {
-        injector
-            .inject(&app, &text, strategy)
+    if let Some(service) = service_guard.as_ref() {
+        service
+            .inject_text(text, strategy)
             .await
             .map_err(|e| {
                 error!("Failed to inject text: {}", e);
                 e.to_string()
             })?;
+    } else {
+        return Err("Text injector service not initialized".to_string());
     }
 
     info!("Text injection completed");

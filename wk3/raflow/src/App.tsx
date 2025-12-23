@@ -14,14 +14,17 @@ function App() {
 
   const handleStartRecording = async (apiKey: string, deviceName?: string) => {
     try {
+      console.log('Starting recording with:', { apiKey: apiKey.substring(0, 10) + '...', deviceName });
       await invoke('start_recording', {
         apiKey,
         deviceName: deviceName || null,
       });
+      console.log('Recording started successfully');
       setIsRecording(true);
       setActiveTab('overlay');
     } catch (error) {
       console.error('Failed to start recording:', error);
+      alert(`启动录音失败: ${error}`);
       throw error;
     }
   };

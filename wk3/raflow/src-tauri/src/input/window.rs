@@ -24,11 +24,11 @@ pub fn get_active_window() -> Result<WindowInfo> {
                 Ok(WindowInfo {
                     app_name: window.app_name,
                     title: window.title,
-                    process_id: window.process_id,
+                    process_id: window.process_id as u32,
                 })
             }
             Err(e) => {
-                Err(anyhow!("Failed to get active window: {}", e))
+                Err(anyhow!("Failed to get active window: {:?}", e))
             }
         }
     }

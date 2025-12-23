@@ -1,3 +1,4 @@
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 /// Messages sent from client to ElevenLabs Scribe API
@@ -6,7 +7,14 @@ use serde::{Deserialize, Serialize};
 pub enum ClientMessage {
     /// Audio chunk with PCM data encoded in base64
     #[serde(rename = "input_audio_chunk")]
-    AudioChunk { audio_base_64: String },
+    AudioChunk {
+        audio_base_64: String,
+        sample_rate: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        commit: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        previous_text: Option<String>,
+    },
 }
 
 /// Messages received from ElevenLabs Scribe API
@@ -25,6 +33,7 @@ pub enum ServerMessage {
     #[serde(rename = "partial_transcript")]
     PartialTranscript {
         text: String,
+        #[serde(default)]
         created_at_ms: u64,
         #[serde(default)]
         normalized_text: String,
@@ -40,12 +49,32 @@ pub enum ServerMessage {
         confidence: f32,
     },
 
+    /// Committed transcript with word-level timestamps
+    #[serde(rename = "committed_transcript_with_timestamps")]
+    CommittedTranscriptWithTimestamps {
+        text: String,
+        #[serde(default)]
+        normalized_text: String,
+        #[serde(default)]
+        confidence: f32,
+        #[serde(default)]
+        words: Vec<serde_json::Value>,
+        #[serde(default)]
+        language_code: String,
+    },
+
     /// Input validation or processing error
     #[serde(rename = "input_error")]
     InputError {
         error_message: String,
         #[serde(default)]
         error_code: String,
+    },
+
+    /// Invalid request error
+    #[serde(rename = "invalid_request")]
+    InvalidRequest {
+        error: String,
     },
 
     /// Session configuration message
@@ -61,6 +90,11 @@ pub enum ServerMessage {
 impl ClientMessage {
     /// Create an audio chunk message from PCM samples
     pub fn audio_chunk(samples: &[f32]) -> Self {
+        Self::audio_chunk_with_commit(samples, false)
+    }
+
+    /// Create an audio chunk message with optional commit flag
+    pub fn audio_chunk_with_commit(samples: &[f32], commit: bool) -> Self {
         // Convert f32 samples to i16 PCM
         let pcm_i16: Vec<i16> = samples
             .iter()
@@ -76,14 +110,23 @@ impl ClientMessage {
         // Encode as base64
         let audio_base_64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
 
-        ClientMessage::AudioChunk { audio_base_64 }
+        ClientMessage::AudioChunk {
+            audio_base_64,
+            sample_rate: 16000, // Scribe v2 Realtime requires sample_rate
+            commit: if commit { Some(true) } else { None },
+            previous_text: None,
+        }
     }
 }
 
 impl ServerMessage {
     /// Check if this is a final transcript
     pub fn is_final(&self) -> bool {
-        matches!(self, ServerMessage::CommittedTranscript { .. })
+        matches!(
+            self,
+            ServerMessage::CommittedTranscript { .. }
+                | ServerMessage::CommittedTranscriptWithTimestamps { .. }
+        )
     }
 
     /// Get the transcript text if available
@@ -91,13 +134,17 @@ impl ServerMessage {
         match self {
             ServerMessage::PartialTranscript { text, .. } => Some(text),
             ServerMessage::CommittedTranscript { text, .. } => Some(text),
+            ServerMessage::CommittedTranscriptWithTimestamps { text, .. } => Some(text),
             _ => None,
         }
     }
 
     /// Check if this is an error message
     pub fn is_error(&self) -> bool {
-        matches!(self, ServerMessage::InputError { .. })
+        matches!(
+            self,
+            ServerMessage::InputError { .. } | ServerMessage::InvalidRequest { .. }
+        )
     }
 }
 

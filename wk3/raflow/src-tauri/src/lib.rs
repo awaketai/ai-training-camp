@@ -7,6 +7,7 @@ mod utils;
 
 use anyhow::Result;
 use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder, Manager};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 pub use state::AppState;
 pub use utils::{RAFlowError, RecoveryStrategy, Metrics, PerformanceMetrics};
@@ -17,6 +18,17 @@ const APP_PATH: &str = "raflow";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> Result<()> {
+    // Initialize tracing subscriber with custom filter
+    let filter = EnvFilter::new("raflow=info,warn")
+        .add_directive("tungstenite=warn".parse().unwrap())
+        .add_directive("tokio_tungstenite=warn".parse().unwrap())
+        .add_directive("tao=warn".parse().unwrap());
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::layer())
+        .init();
+
     let app_path = dirs::data_local_dir().unwrap().join(APP_PATH);
     if !app_path.exists() {
         std::fs::create_dir_all(&app_path)?;
@@ -29,18 +41,6 @@ pub fn run() -> Result<()> {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(
-            tauri_plugin_log::Builder::new()
-                .target(tauri_plugin_log::Target::new(
-                    tauri_plugin_log::TargetKind::Stdout,
-                ))
-                .target(tauri_plugin_log::Target::new(
-                    tauri_plugin_log::TargetKind::LogDir {
-                        file_name: Some("raflow.log".to_string()),
-                    },
-                ))
-                .build(),
-        )
         .invoke_handler(tauri::generate_handler![
             commands::list_audio_devices,
             commands::start_recording,
@@ -55,6 +55,14 @@ pub fn run() -> Result<()> {
             commands::check_system_health,
         ])
         .setup(|app| {
+            let state_handle = state.clone();
+            let app_handle = app.handle().clone();
+
+            // Initialize text injector service in background
+            tauri::async_runtime::spawn(async move {
+                state_handle.init_text_injector_service(app_handle).await;
+            });
+
             app.manage(state);
             setup_tray(app)?;
             Ok(())

@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use enigo::{Enigo, Key, Keyboard, Settings};
+use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 use tauri::AppHandle;
@@ -7,6 +8,16 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 use tracing::{debug, error, info};
 
 use super::window::{get_active_window, is_code_editor, is_terminal_app, WindowInfo};
+
+/// Request to inject text
+#[derive(Debug)]
+pub enum InjectionRequest {
+    Inject {
+        text: String,
+        strategy: Option<InjectionStrategy>,
+        response_tx: tokio::sync::oneshot::Sender<Result<()>>,
+    },
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InjectionStrategy {
@@ -184,6 +195,86 @@ impl Default for TextInjector {
         Self::new().expect("Failed to create TextInjector")
     }
 }
+
+/// Service that manages text injection in a dedicated thread
+#[derive(Clone)]
+pub struct TextInjectorService {
+    request_tx: mpsc::Sender<InjectionRequest>,
+}
+
+impl TextInjectorService {
+    /// Create a new text injector service and spawn background thread
+    pub fn new(app: AppHandle) -> Self {
+        let (request_tx, request_rx) = mpsc::channel::<InjectionRequest>();
+
+        // Spawn dedicated thread for text injection
+        thread::spawn(move || {
+            Self::run_service(app, request_rx);
+        });
+
+        Self { request_tx }
+    }
+
+    /// Run the service loop in dedicated thread
+    fn run_service(app: AppHandle, request_rx: mpsc::Receiver<InjectionRequest>) {
+        info!("Text injector service thread started");
+
+        // Create TextInjector in this thread (it's not Send, so stays here)
+        let mut injector = match TextInjector::new() {
+            Ok(inj) => inj,
+            Err(e) => {
+                error!("Failed to create TextInjector: {}", e);
+                return;
+            }
+        };
+
+        // Process requests
+        while let Ok(request) = request_rx.recv() {
+            match request {
+                InjectionRequest::Inject {
+                    text,
+                    strategy,
+                    response_tx,
+                } => {
+                    info!("Processing injection request for {} chars", text.len());
+
+                    // Create a tokio runtime in this thread for async operations
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    let result = rt.block_on(injector.inject(&app, &text, strategy));
+
+                    // Send response back
+                    let _ = response_tx.send(result);
+                }
+            }
+        }
+
+        info!("Text injector service thread ended");
+    }
+
+    /// Inject text using the service
+    pub async fn inject_text(
+        &self,
+        text: String,
+        strategy: Option<InjectionStrategy>,
+    ) -> Result<()> {
+        let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+
+        let request = InjectionRequest::Inject {
+            text,
+            strategy,
+            response_tx,
+        };
+
+        self.request_tx
+            .send(request)
+            .map_err(|e| anyhow!("Failed to send injection request: {}", e))?;
+
+        response_rx
+            .await
+            .map_err(|e| anyhow!("Failed to receive injection response: {}", e))?
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

@@ -30,7 +30,7 @@ tracing = { workspace = true }
 app-core = { path = "../app-core" }
 
 # Tauri core
-tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-log = { version = "2", features = ["tracing"] }
 tauri-plugin-opener = { version = "2" }
 tauri-plugin-store = { version = "2" }
@@ -44,7 +44,8 @@ tauri-plugin-fs = "2"
 futures-util = "0.3"
 
 # WebSocket
-tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+rustls = { version = "0.23", features = ["aws-lc-rs"] }
 
 # Serialization
 base64 = "0.22"
@@ -56,6 +57,7 @@ rubato = "0.16"
 # Input/System integration
 enigo = "0.2"
 active-win-pos-rs = "0.9"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 
 # macOS specific
 [target.'cfg(target_os = "macos")'.dependencies]

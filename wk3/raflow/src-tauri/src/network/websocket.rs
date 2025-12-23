@@ -10,6 +10,17 @@ use tracing::{debug, error, info, warn};
 
 use super::protocol::{ClientMessage, ServerMessage};
 
+// Initialize rustls crypto provider
+fn init_crypto_provider() {
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+
+    INIT.call_once(|| {
+        let provider = rustls::crypto::aws_lc_rs::default_provider();
+        let _ = provider.install_default();
+    });
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionState {
     Disconnected,
@@ -33,7 +44,8 @@ impl WebSocketClient {
     /// # Arguments
     /// * `api_key` - ElevenLabs API key
     pub fn new(api_key: String) -> Self {
-        let url = "wss://api.elevenlabs.io/v1/convai/conversation".to_string();
+        // Scribe v2 Realtime API endpoint for speech-to-text
+        let url = "wss://api.elevenlabs.io/v1/speech-to-text/realtime".to_string();
         Self {
             url,
             api_key,
@@ -56,27 +68,47 @@ impl WebSocketClient {
         >,
         futures_util::stream::SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     )> {
+        // Initialize crypto provider (idempotent)
+        init_crypto_provider();
+
         self.state = ConnectionState::Connecting;
 
-        let url = format!("{}?model_id=scribe_v2&encoding=pcm_16000", self.url);
+        // Scribe v2 Realtime is the only supported model for WebSocket
+        // Supported Chinese language codes from API: zho, yue, nan
+        // Using no language_code for auto-detection (best option for now)
+        let url = format!("{}?model_id=scribe_v2_realtime", self.url);
 
-        info!("Connecting to WebSocket: {}", url);
-
-        let request = url.parse::<http::Uri>()?;
+        info!("Connecting to Scribe v2 Realtime WebSocket (auto language detection): {}", url);
 
         // Create request with authorization header
+        use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+        use tokio_tungstenite::tungstenite::http::HeaderValue;
+        let mut request = url.into_client_request()?;
+
+        // Add API key header
+        let header_value = HeaderValue::from_str(&self.api_key)
+            .map_err(|_| anyhow!("Invalid API key format"))?;
+
+        request.headers_mut().insert("xi-api-key", header_value);
+
+        info!("Connecting with API key authorization header");
+
         let (ws_stream, response) = connect_async(request).await.map_err(|e| {
             error!("WebSocket connection failed: {}", e);
             self.state = ConnectionState::Disconnected;
             anyhow!("Failed to connect: {}", e)
         })?;
 
-        info!("WebSocket connected with response: {:?}", response.status());
+        info!("WebSocket connected successfully");
+        info!("Response status: {}", response.status());
+        info!("Response headers: {:?}", response.headers());
 
         self.state = ConnectionState::Connected;
         self.reconnect_attempts = 0;
 
         let (write, read) = ws_stream.split();
+
+        info!("WebSocket stream split completed, ready to send/receive");
         Ok((write, read))
     }
 
@@ -87,11 +119,16 @@ impl WebSocketClient {
             Message,
         >,
         audio_data: &[f32],
+        commit: bool,
     ) -> Result<()> {
-        let msg = ClientMessage::audio_chunk(audio_data);
+        let msg = ClientMessage::audio_chunk_with_commit(audio_data, commit);
         let json = serde_json::to_string(&msg)?;
 
-        sink.send(Message::Text(json)).await.map_err(|e| {
+        if commit {
+            info!("Sending audio with COMMIT flag (speech segment ended)");
+        }
+
+        sink.send(Message::Text(json.into())).await.map_err(|e| {
             error!("Failed to send audio: {}", e);
             anyhow!("Send error: {}", e)
         })?;
@@ -111,36 +148,46 @@ impl WebSocketClient {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(Message::Text(text)) => {
-                    debug!("Received message: {}", text);
+                    debug!("Received text message: {}", text);
 
                     match serde_json::from_str::<ServerMessage>(&text) {
                         Ok(server_msg) => {
+                            info!("Parsed server message: {:?}", server_msg);
                             if let Err(e) = tx.send(server_msg).await {
                                 error!("Failed to send message to channel: {}", e);
                                 break;
                             }
                         }
                         Err(e) => {
-                            warn!("Failed to parse server message: {} - {}", e, text);
+                            warn!("Failed to parse server message: {} - Raw text: {}", e, text);
                         }
                     }
                 }
                 Ok(Message::Close(frame)) => {
-                    info!("WebSocket closed: {:?}", frame);
+                    if let Some(cf) = frame {
+                        error!("WebSocket closed by server - Code: {}, Reason: {}", cf.code, cf.reason);
+                    } else {
+                        info!("WebSocket closed by server (no close frame)");
+                    }
                     break;
                 }
-                Ok(Message::Ping(data)) => {
-                    debug!("Received ping, sending pong");
+                Ok(Message::Ping(_data)) => {
+                    debug!("Received ping");
                     // Pong is handled automatically by tokio-tungstenite
                 }
                 Ok(Message::Pong(_)) => {
                     debug!("Received pong");
                 }
+                Ok(Message::Binary(data)) => {
+                    warn!("Received unexpected binary message of {} bytes", data.len());
+                }
+                Ok(Message::Frame(_)) => {
+                    debug!("Received raw frame");
+                }
                 Err(e) => {
-                    error!("WebSocket error: {}", e);
+                    error!("WebSocket receive error: {}", e);
                     break;
                 }
-                _ => {}
             }
         }
 

@@ -5,7 +5,12 @@
       "Bash(cargo check:*)",
       "Bash(cat:*)",
       "Bash(chmod:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(pnpm tauri build:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:elevenlabs.io)",
+      "WebFetch(domain:gist.github.com)",
+      "Bash(cargo build:*)"
     ]
   }
 }

@@ -105,7 +105,7 @@ impl AudioCapture {
 
         info!(
             "Starting audio stream with sample rate: {} Hz, channels: {}",
-            config.sample_rate.0, channels
+            config.sample_rate, channels
         );
 
         let stream = device.build_input_stream(
@@ -148,7 +148,7 @@ impl AudioCapture {
 
     /// Get current sample rate
     pub fn sample_rate(&self) -> Option<u32> {
-        self.config.as_ref().map(|c| c.sample_rate.0)
+        self.config.as_ref().map(|c| c.sample_rate.into())
     }
 }
 

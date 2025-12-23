@@ -1,6 +1,6 @@
 use anyhow::Result;
 use rubato::{
-    InterpolationParameters, InterpolationType, Resampler, SincFixedIn, WindowFunction,
+    SincInterpolationParameters, SincInterpolationType, Resampler, SincFixedIn, WindowFunction,
 };
 use tracing::debug;
 
@@ -19,10 +19,10 @@ impl AudioResampler {
     /// * `to_rate` - Output sample rate in Hz
     /// * `chunk_size` - Size of input chunks to process
     pub fn new(from_rate: usize, to_rate: usize, chunk_size: usize) -> Result<Self> {
-        let params = InterpolationParameters {
+        let params = SincInterpolationParameters {
             sinc_len: 256,
             f_cutoff: 0.95,
-            interpolation: InterpolationType::Linear,
+            interpolation: SincInterpolationType::Linear,
             oversampling_factor: 256,
             window: WindowFunction::BlackmanHarris2,
         };

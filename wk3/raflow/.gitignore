@@ -24,3 +24,14 @@ dist-ssr
 *.sw?
 
 .fastembed_cache
+
+# Rust build output
+target/
+
+# Cargo local config
+.cargo/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
