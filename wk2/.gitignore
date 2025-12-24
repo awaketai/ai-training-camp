@@ -56,6 +56,9 @@ dist/
 dist-ssr/
 *.local
 
+# Frontend public (auto-generated symlinks)
+db_query/frontend/public/
+
 # Frontend testing
 coverage/
 

@@ -5,7 +5,7 @@ description = "Database query tool with natural language SQL generation"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.104.0",
+    "fastapi[standard]>=0.104.0",
     "uvicorn[standard]>=0.24.0",
     "sqlglot>=20.0.0",
     "openai>=1.0.0",

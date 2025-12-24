@@ -4,10 +4,13 @@
  * Monaco Editor wrapper for SQL editing with syntax highlighting and auto-completion.
  */
 
-import Editor, { OnMount } from '@monaco-editor/react';
+import Editor, { OnMount, loader } from '@monaco-editor/react';
 import { Card } from 'antd';
 import type { editor } from 'monaco-editor';
 import type { TableMetadata } from '@/services/types';
+
+// Configure loader to use local monaco-editor from public directory
+loader.config({ paths: { vs: '/monaco-editor/vs' } });
 
 interface SqlEditorProps {
   value: string;
