@@ -19,7 +19,8 @@
       "Bash(make status:*)",
       "Bash(make start-backend:*)",
       "Bash(ln:*)",
-      "Bash(make stop-frontend:*)"
+      "Bash(make stop-frontend:*)",
+      "Bash(system_profiler:*)"
     ]
   }
 }

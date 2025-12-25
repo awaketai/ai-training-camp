@@ -115,7 +115,7 @@ pub async fn start_recording(
 
     // Initialize WebSocket client BEFORE setting is_recording to true
     info!("🌐 Attempting WebSocket connection...");
-    info!("🔧 Model: scribe_v2_realtime, Language: zh (Chinese)");
+    info!("🔧 Model: scribe_v2_realtime, Language: zho (Mandarin Chinese - explicitly specified)");
     let mut ws_client = WebSocketClient::new(api_key);
     let (mut ws_sink, ws_stream) = match ws_client.connect().await {
         Ok(streams) => {
@@ -166,6 +166,11 @@ pub async fn start_recording(
         const CHUNK_SIZE: usize = 1600; // 100ms at 16kHz
         let mut was_speaking = false; // Track previous speaking state
         let mut audio_chunk_count = 0;
+        let mut background_noise_samples: Vec<f32> = Vec::new();
+        let mut noise_baseline = 0.0_f32;
+        let mut chunk_count = 0; // Track processed chunks for noise baseline
+        let mut silence_chunks_since_last_send = 0; // Track silence duration
+        const MAX_SILENCE_CHUNKS_BEFORE_KEEPALIVE: usize = 50; // 5 seconds of silence
 
         info!("🎤 Audio processing task started");
 
@@ -193,7 +198,35 @@ pub async fn start_recording(
 
                         // Process in chunks
                         while buffer.len() >= CHUNK_SIZE {
+                            // Check if still recording INSIDE the loop
+                            if !*state_clone.is_recording.lock().await {
+                                info!("Recording stopped during chunk processing");
+                                break;  // Exit inner loop
+                            }
+
                             let chunk: Vec<f32> = buffer.drain(..CHUNK_SIZE).collect();
+                            chunk_count += 1;
+
+                            // Calculate background noise level (before VAD)
+                            let chunk_rms = (chunk.iter().map(|x| x * x).sum::<f32>() / chunk.len() as f32).sqrt();
+
+                            // Collect background noise samples before speech starts (first 3 seconds = 30 chunks)
+                            if chunk_count <= 30 && !was_speaking {
+                                background_noise_samples.push(chunk_rms);
+                                if chunk_count == 30 {
+                                    noise_baseline = background_noise_samples.iter().sum::<f32>() / 30.0;
+                                    info!("📊 Background noise baseline calculated: RMS = {:.6}", noise_baseline);
+                                    info!("   Samples collected: {} chunks over 3 seconds", background_noise_samples.len());
+                                    if noise_baseline > 0.01 {
+                                        info!("⚠️  High background noise! May cause API false positives.");
+                                        info!("   Recommendation: Reduce system mic volume or improve environment");
+                                    } else if noise_baseline > 0.005 {
+                                        info!("⚠️  Moderate background noise detected");
+                                    } else {
+                                        info!("✅ Low background noise - good recording environment");
+                                    }
+                                }
+                            }
 
                             // VAD detection for audio level monitoring and speech detection
                             let mut vad = state_clone.vad.lock().await;
@@ -206,30 +239,66 @@ pub async fn start_recording(
 
                             // Detect speech end (transition from speaking to silence)
                             let speech_ended = was_speaking && !is_speech;
-                            was_speaking = is_speech;
 
-                            // Always send audio to WebSocket (let server decide what to transcribe)
-                            // Send commit=true when speech ends to finalize the current segment
-                            // Check if still recording before sending
-                            if !*state_clone.is_recording.lock().await {
-                                info!("Recording stopped, breaking audio send loop");
-                                break;
+                            // Log VAD transitions with noise analysis
+                            if !was_speaking && is_speech {
+                                let snr = if noise_baseline > 0.0 {
+                                    20.0 * (chunk_rms / noise_baseline).log10()
+                                } else {
+                                    999.0
+                                };
+                                info!(
+                                    "🎙️  VAD: Speech STARTED | RMS: {:.6} | Audio Level: {:.4} | SNR: {:.1} dB",
+                                    chunk_rms, audio_level, snr
+                                );
+                                if snr < 10.0 {
+                                    info!("⚠️  Low SNR! Background noise may interfere with recognition.");
+                                }
+                            } else if speech_ended {
+                                info!("🔚 VAD: Speech ENDED (sending commit) | RMS: {:.6}", chunk_rms);
                             }
 
+                            was_speaking = is_speech;
+
+                            // CRITICAL FIX: Only send audio when speech is detected or just ended
+                            // This prevents API from receiving and misinterpreting background noise
+                            let should_send_audio = is_speech || speech_ended;
+
+                            // Keep-alive mechanism: send silence if no audio sent for too long
+                            // This prevents API from closing idle connections
+                            let mut send_keepalive = false;
+                            if !should_send_audio {
+                                silence_chunks_since_last_send += 1;
+                                if silence_chunks_since_last_send >= MAX_SILENCE_CHUNKS_BEFORE_KEEPALIVE {
+                                    send_keepalive = true;
+                                    silence_chunks_since_last_send = 0;
+                                    info!("🔄 Sending keep-alive silence chunk to maintain WebSocket connection");
+                                }
+                            } else {
+                                silence_chunks_since_last_send = 0;
+                            }
+
+                            if !should_send_audio && !send_keepalive {
+                                // Skip sending this chunk - it's just background noise
+                                continue;
+                            }
+
+                            // Send audio to WebSocket with commit flag when speech ends
+                            // For keep-alive, send silence without commit
                             if let Err(e) =
                                 WebSocketClient::send_audio(&mut ws_sink, &chunk, speech_ended).await
                             {
                                 error!("Failed to send audio: {}", e);
                                 // Stop recording on send error
                                 *state_clone.is_recording.lock().await = false;
-                                break;
+                                break;  // Exit inner loop, outer loop will also exit
                             }
 
-                            // Log when speech is detected or ends
-                            if is_speech {
-                                info!("🗣️  Speech detected, audio level: {:.4}", audio_level);
-                            } else if speech_ended {
-                                info!("🔚 Speech ended, sent commit signal");
+                            // Log audio transmission
+                            if speech_ended {
+                                info!("📤 Sent audio chunk with COMMIT flag");
+                            } else if send_keepalive {
+                                info!("📤 Sent keep-alive chunk");
                             }
                         }
                     }
@@ -238,9 +307,25 @@ pub async fn start_recording(
                     }
                 }
             }
+
+            // Check again if we should stop (in case inner loop set it to false)
+            if !*state_clone.is_recording.lock().await {
+                info!("Recording stopped, exiting audio processing loop");
+                break;
+            }
         }
 
         info!("🔇 Audio processing task ended");
+
+        // Stop the audio capture stream
+        let mut capture_guard = state_clone.audio_capture.lock().await;
+        if let Some(mut capture) = capture_guard.take() {
+            if let Err(e) = capture.stop_stream() {
+                error!("Failed to stop audio stream: {}", e);
+            } else {
+                info!("✅ Audio capture stream stopped cleanly");
+            }
+        }
     });
 
     // Transcript processing task

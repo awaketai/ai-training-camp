@@ -75,10 +75,12 @@ impl WebSocketClient {
 
         // Scribe v2 Realtime is the only supported model for WebSocket
         // Supported Chinese language codes from API: zho, yue, nan
-        // Using no language_code for auto-detection (best option for now)
-        let url = format!("{}?model_id=scribe_v2_realtime", self.url);
+        // zho = Mandarin Chinese (Standard Chinese)
+        // yue = Cantonese
+        // nan = Min Nan (Hokkien/Taiwanese)
+        let url = format!("{}?model_id=scribe_v2_realtime&language_code=zho", self.url);
 
-        info!("Connecting to Scribe v2 Realtime WebSocket (auto language detection): {}", url);
+        info!("Connecting to Scribe v2 Realtime WebSocket with Mandarin Chinese (zho): {}", url);
 
         // Create request with authorization header
         use tokio_tungstenite::tungstenite::client::IntoClientRequest;

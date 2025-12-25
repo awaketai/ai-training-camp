@@ -20,8 +20,8 @@ impl VoiceActivityDetector {
             energy_threshold: threshold,
             speech_frames: 0,
             silence_frames: 0,
-            min_speech_frames: 5,   // ~50ms at 100ms frames
-            min_silence_frames: 30, // ~300ms at 100ms frames
+            min_speech_frames: 3,   // ~30ms at 100ms frames - faster response
+            min_silence_frames: 15, // ~150ms at 100ms frames - reduced from 300ms to avoid cutting sentences
             is_speaking: false,
         }
     }
@@ -94,7 +94,8 @@ impl VoiceActivityDetector {
 
 impl Default for VoiceActivityDetector {
     fn default() -> Self {
-        Self::new(0.02) // Default threshold
+        // Increased threshold from 0.02 to 0.03 to reduce false positives from background noise
+        Self::new(0.03)
     }
 }
 
