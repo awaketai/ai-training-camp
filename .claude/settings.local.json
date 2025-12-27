@@ -25,7 +25,13 @@
       "Bash(find:*)",
       "Bash(wc:*)",
       "Bash(mkdir:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(ls:*)",
+      "Bash(xargs kill:*)",
+      "Bash(python3:*)",
+      "Bash(make stop:*)"
     ]
   }
 }

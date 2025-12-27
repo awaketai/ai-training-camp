@@ -119,42 +119,32 @@ stop: stop-backend stop-frontend
 	@echo "$(GREEN)✓ All services stopped$(NC)"
 
 stop-backend:
-	@if [ -f $(BACKEND_PID) ]; then \
-		echo "$(BLUE)Stopping backend service...$(NC)"; \
+	@echo "$(BLUE)Stopping backend service...$(NC)"; \
+	if [ -f $(BACKEND_PID) ]; then \
 		PID=$$(cat $(BACKEND_PID)); \
 		if ps -p $$PID > /dev/null 2>&1; then \
 			kill $$PID 2>/dev/null || true; \
 			sleep 1; \
-			if ps -p $$PID > /dev/null 2>&1; then \
-				kill -9 $$PID 2>/dev/null || true; \
-			fi; \
-			echo "$(GREEN)✓ Backend stopped$(NC)"; \
-		else \
-			echo "$(YELLOW)Backend process not found$(NC)"; \
+			kill -9 $$PID 2>/dev/null || true; \
 		fi; \
 		rm -f $(BACKEND_PID); \
-	else \
-		echo "$(YELLOW)Backend is not running$(NC)"; \
-	fi
+	fi; \
+	lsof -ti :8000 | xargs kill -9 2>/dev/null || true; \
+	echo "$(GREEN)✓ Backend stopped$(NC)"
 
 stop-frontend:
-	@if [ -f $(FRONTEND_PID) ]; then \
-		echo "$(BLUE)Stopping frontend service...$(NC)"; \
+	@echo "$(BLUE)Stopping frontend service...$(NC)"; \
+	if [ -f $(FRONTEND_PID) ]; then \
 		PID=$$(cat $(FRONTEND_PID)); \
 		if ps -p $$PID > /dev/null 2>&1; then \
 			kill $$PID 2>/dev/null || true; \
 			sleep 1; \
-			if ps -p $$PID > /dev/null 2>&1; then \
-				kill -9 $$PID 2>/dev/null || true; \
-			fi; \
-			echo "$(GREEN)✓ Frontend stopped$(NC)"; \
-		else \
-			echo "$(YELLOW)Frontend process not found$(NC)"; \
+			kill -9 $$PID 2>/dev/null || true; \
 		fi; \
 		rm -f $(FRONTEND_PID); \
-	else \
-		echo "$(YELLOW)Frontend is not running$(NC)"; \
-	fi
+	fi; \
+	lsof -ti :5173 | xargs kill -9 2>/dev/null || true; \
+	echo "$(GREEN)✓ Frontend stopped$(NC)"
 
 # Restart services
 restart: stop start
