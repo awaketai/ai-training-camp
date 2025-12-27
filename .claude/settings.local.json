@@ -20,7 +20,12 @@
       "Bash(make start-backend:*)",
       "Bash(ln:*)",
       "Bash(make stop-frontend:*)",
-      "Bash(system_profiler:*)"
+      "Bash(system_profiler:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(mkdir:*)",
+      "Bash(git log:*)"
     ]
   }
 }

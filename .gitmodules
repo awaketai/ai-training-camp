@@ -1,0 +1,6 @@
+[submodule "vendors/codex"]
+	path = vendors/codex
+	url = org-14957082@github.com:openai/codex.git
+[submodule "vendors/gin"]
+	path = vendors/gin
+	url = git@github.com:gin-gonic/gin.git
