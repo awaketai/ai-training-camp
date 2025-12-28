@@ -4,9 +4,10 @@
  * Displays query execution results in a table format with export functionality.
  */
 
-import { Button, Card, Table, Tag, Typography } from 'antd';
+import { Button, Card, Table, Tag, Typography, Dropdown } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DownloadOutlined } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+import { DownloadOutlined, FileTextOutlined, FileOutlined } from '@ant-design/icons';
 import type { QueryResult } from '@/services/types';
 import { formatCellValue } from '@/utils/formatters';
 
@@ -48,21 +49,47 @@ export function QueryResultsTable({ result }: QueryResultsTableProps) {
     },
   }));
 
-  // Export to CSV
-  const handleExport = () => {
-    const csvContent = generateCSV(result);
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Download file helper
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
 
     link.setAttribute('href', url);
-    link.setAttribute('download', `query_results_${Date.now()}.csv`);
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    const csvContent = generateCSV(result);
+    downloadFile(csvContent, `query_results_${Date.now()}.csv`, 'text/csv;charset=utf-8;');
+  };
+
+  // Export to JSON
+  const handleExportJSON = () => {
+    const jsonContent = JSON.stringify(result.rows, null, 2);
+    downloadFile(jsonContent, `query_results_${Date.now()}.json`, 'application/json;charset=utf-8;');
+  };
+
+  const exportMenuItems: MenuProps['items'] = [
+    {
+      key: 'csv',
+      label: 'Export CSV',
+      icon: <FileTextOutlined />,
+      onClick: handleExportCSV,
+    },
+    {
+      key: 'json',
+      label: 'Export JSON',
+      icon: <FileOutlined />,
+      onClick: handleExportJSON,
+    },
+  ];
 
   return (
     <Card
@@ -77,13 +104,11 @@ export function QueryResultsTable({ result }: QueryResultsTableProps) {
         </span>
       }
       extra={
-        <Button
-          icon={<DownloadOutlined />}
-          onClick={handleExport}
-          size="small"
-        >
-          Export CSV
-        </Button>
+        <Dropdown menu={{ items: exportMenuItems }} placement="bottomRight">
+          <Button icon={<DownloadOutlined />} size="small">
+            Export
+          </Button>
+        </Dropdown>
       }
     >
       <Table

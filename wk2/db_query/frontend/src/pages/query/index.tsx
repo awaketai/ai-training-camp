@@ -38,6 +38,7 @@ import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { SqlEditor } from '@/components/SqlEditor';
 import { QueryResultsTable } from '@/components/QueryResultsTable';
 import { NaturalLanguageInput } from '@/components/NaturalLanguageInput';
+import { SchemaTree } from '@/components/SchemaTree';
 import { formatExecutionTime } from '@/utils/formatters';
 
 const { Title, Text, Paragraph } = Typography;
@@ -191,43 +192,123 @@ export function QueryPage() {
     setError(null);
   };
 
+  // Schema tree width state for resizing
+  const [schemaWidth, setSchemaWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handleInsertTableName = (tableName: string) => {
+    setSqlText((prev) => prev + tableName);
+  };
+
+  const handleInsertColumn = (tableName: string, columnName: string) => {
+    setSqlText((prev) => prev + `${tableName}.${columnName}`);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = Math.max(200, Math.min(500, e.clientX - 240));
+      setSchemaWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
   const renderSqlTab = () => (
-    <Row gutter={[24, 24]}>
-      {/* Left side: SQL Editor */}
-      <Col xs={24} lg={12}>
-        <Card>
-          <Alert
-            message="SELECT Queries Only"
-            description="Only SELECT statements are allowed. The system automatically applies LIMIT 1000 if not specified."
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
+    <div>
+      {/* Top section: Schema Tree + SQL Editor */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 16, height: 520 }}>
+        {/* Left side: Schema Tree */}
+        <div style={{ width: schemaWidth, flexShrink: 0, height: '100%' }}>
+          <Card
+            title="Tables"
+            size="small"
+            bodyStyle={{ padding: '0 8px', overflow: 'auto', height: 'calc(100% - 40px)' }}
+            style={{ height: '100%' }}
+          >
+            <SchemaTree
+              databaseName={selectedDatabase}
+              onTableSelect={handleInsertTableName}
+              onColumnSelect={handleInsertColumn}
+            />
+          </Card>
+        </div>
 
-          {error && activeTab === 'sql' && <ErrorDisplay error={error} />}
+        {/* Resizer handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          style={{
+            width: 8,
+            cursor: 'col-resize',
+            backgroundColor: isResizing ? '#1890ff' : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'background-color 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            if (!isResizing) e.currentTarget.style.backgroundColor = '#f0f0f0';
+          }}
+          onMouseLeave={(e) => {
+            if (!isResizing) e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          <div style={{ width: 2, height: 40, backgroundColor: '#d9d9d9', borderRadius: 1 }} />
+        </div>
 
-          <SqlEditor value={sqlText} onChange={setSqlText} height="500px" />
+        {/* Right side: SQL Editor */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Card>
+            <Alert
+              message="SELECT Queries Only"
+              description="Only SELECT statements are allowed. The system automatically applies LIMIT 1000 if not specified."
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
 
-          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Tip: Press Ctrl+Enter (Cmd+Enter on Mac) to execute
-            </Text>
-            <Button
-              type="primary"
-              icon={<PlayCircleOutlined />}
-              onClick={() => handleExecuteSQL(sqlText)}
-              loading={executing}
-              disabled={!selectedDatabase || !sqlText.trim()}
-              size="large"
-            >
-              Execute Query
-            </Button>
-          </div>
-        </Card>
-      </Col>
+            {error && activeTab === 'sql' && <ErrorDisplay error={error} />}
 
-      {/* Right side: Results */}
-      <Col xs={24} lg={12}>
+            <SqlEditor value={sqlText} onChange={setSqlText} height="300px" />
+
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Tip: Press Ctrl+Enter (Cmd+Enter on Mac) to execute
+              </Text>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                onClick={() => handleExecuteSQL(sqlText)}
+                loading={executing}
+                disabled={!selectedDatabase || !sqlText.trim()}
+                size="large"
+              >
+                Execute Query
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Bottom section: Results */}
+      <div>
         {query && (
           <Card
             title="Query Execution Status"
@@ -321,8 +402,8 @@ export function QueryPage() {
             </div>
           </Card>
         )}
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 
   const renderNaturalTab = () => (
