@@ -25,7 +25,9 @@
       "Bash(find:*)",
       "Bash(wc:*)",
       "Bash(mkdir:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git submodule:*)",
+      "Bash(ls:*)"
     ]
   }
 }

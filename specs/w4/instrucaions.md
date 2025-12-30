@@ -33,3 +33,7 @@
 仔细阅读./vendors/gin 的代码，撰写一个详细的架构设计文档，如需图表仔细阅读./vendors/gin 的代码，撰写一个详细的架构设计文档，如需图标，使用 mermaid chart。
 文档放在 ./specs/w4/gin-arch-claude.md ，使用 mermaid chart。
 文档放在 ./specs/w4/gin-arch-claude.md 
+
+## 分析 gin 框架路由实现原理
+
+仔细阅读 ./vendors/gin 的代码，分析其路由实现原理，包括路由注册、路由请求分发、路由查找等，撰写一个详细的设计实现文档，如需图表，使用 mermain chart，将结果放在 ./specs/w4/gin-router.md
