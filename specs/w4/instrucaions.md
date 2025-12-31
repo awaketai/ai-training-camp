@@ -37,3 +37,21 @@
 ## 分析 gin 框架路由实现原理
 
 仔细阅读 ./vendors/gin 的代码，分析其路由实现原理，包括路由注册、路由请求分发、路由查找等，撰写一个详细的设计实现文档，如需图表，使用 mermain chart，将结果放在 ./specs/w4/gin-router.md
+
+## gemini deepresearch
+
+帮我详细介绍一下 surrealdb，包括它的设计思路，架构，主要的应用场景，目前使用它的著名项目或者公司，以及它和 postgres 的对比
+
+## open-notebook架构分析
+
+仔细阅读 ./vendors/open-notebook 的代码，撰写一个详细的架构分析文档，如需图表，使用 mermaid chart。文档放在 ./specs/w4/open-notebook-arch-design.md 
+
+帮我详细介绍 surrealdb 跟 worker 之间是如何交互的，撰写 ./specs/w4/open-notebook-worker.md
+
+## open-notebook 如何使用 Surrealdb
+
+帮我详细介绍 open-notebook 如何使用 Surrealdb，如何定义存放在 surrealdb 中的数据，如何定义图结构，appp 和 surrealdb 如何交互。撰写 ./specs/w4/open-notebook-surrealdb.md
+
+## podcast 生成
+
+帮我详细介绍 open-notebook 如何生成 podcast，如何使用数据库中的数据，如何定义 podcast 的结构，如何生成 podcast，撰写 ./specs/w4/opppen-notebook-podcast.md
