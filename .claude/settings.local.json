@@ -31,7 +31,11 @@
       "Bash(ls:*)",
       "Bash(xargs kill:*)",
       "Bash(python3:*)",
-      "Bash(make stop:*)"
+      "Bash(make stop:*)",
+      "Bash(xargs:*)",
+      "Bash(uv run:*)",
+      "Bash(uv run python:*)",
+      "Bash(make logs:*)"
     ]
   }
 }

@@ -60,7 +60,7 @@ class TableMetadata(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str
-    schema: str | None = None
+    db_schema: str | None = Field(default=None, alias="schema")
     columns: list[ColumnMetadata]
     primary_key: list[str] = Field(default_factory=list, alias="primaryKey")
     indexes: list[IndexMetadata] = Field(default_factory=list)
@@ -73,7 +73,7 @@ class ViewMetadata(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str
-    schema: str | None = None
+    db_schema: str | None = Field(default=None, alias="schema")
     columns: list[ColumnMetadata]
     definition: str | None = None
 

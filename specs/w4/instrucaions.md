@@ -33,3 +33,7 @@
 仔细阅读./vendors/gin 的代码，撰写一个详细的架构设计文档，如需图表仔细阅读./vendors/gin 的代码，撰写一个详细的架构设计文档，如需图标，使用 mermaid chart。
 文档放在 ./specs/w4/gin-arch-claude.md ，使用 mermaid chart。
 文档放在 ./specs/w4/gin-arch-claude.md 
+
+## open-notebook架构设计
+
+仔细阅读 ./vendors/open-notebook 的代码，撰写一个详细的架构分析文档，如需图标，使用 mermaid chart，文档放在 ./specs/w4/open-notebook-arch.md

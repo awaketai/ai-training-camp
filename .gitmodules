@@ -4,3 +4,6 @@
 [submodule "vendors/gin"]
 	path = vendors/gin
 	url = git@github.com:gin-gonic/gin.git
+[submodule "vendors/open-notebook"]
+	path = vendors/open-notebook
+	url = git@github.com:lfnovo/open-notebook.git
