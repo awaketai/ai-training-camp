@@ -129,7 +129,7 @@ stop-backend:
 		fi; \
 		rm -f $(BACKEND_PID); \
 	fi; \
-	lsof -ti :8000 | xargs kill -9 2>/dev/null || true; \
+	lsof -ti :8000 -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; \
 	echo "$(GREEN)✓ Backend stopped$(NC)"
 
 stop-frontend:
@@ -143,7 +143,7 @@ stop-frontend:
 		fi; \
 		rm -f $(FRONTEND_PID); \
 	fi; \
-	lsof -ti :5173 | xargs kill -9 2>/dev/null || true; \
+	lsof -ti :5173 -sTCP:LISTEN | xargs kill -9 2>/dev/null || true; \
 	echo "$(GREEN)✓ Frontend stopped$(NC)"
 
 # Restart services
