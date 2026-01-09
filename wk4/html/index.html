@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>练习热力图矩阵</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #1f2a3d;
+      --muted: #8a97ad;
+      --border: #e5e9f0;
+      --green: #0cc58a;
+      --red: #fa4d63;
+      --orange: #ff9040;
+      --checkbox: #eef2f6;
+      --pill-green: #0cc58a;
+      --pill-red: #fa4d63;
+      --pill-gray: #eef2f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      line-height: 1.4;
+    }
+
+    .page {
+      display: flex;
+      gap: 20px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(31, 42, 61, 0.08);
+      border: 1px solid #dce3ed;
+    }
+
+    .heatmap-card {
+      flex: 1;
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .header-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: var(--checkbox);
+      border: 1px solid #d6dce5;
+    }
+
+    .dot.green { background: var(--green); border-color: var(--green); }
+    .dot.red { background: var(--red); border-color: var(--red); }
+    .dot.orange { background: var(--orange); border-color: var(--orange); }
+    .dot.empty { background: transparent; border: 1px solid #d6dce5; }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .table th,
+    .table td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 6px;
+      text-align: center;
+    }
+
+    .table thead th {
+      font-weight: 600;
+      color: #6d7a92;
+      position: sticky;
+      top: 0;
+      background: var(--card);
+      z-index: 2;
+    }
+
+    .word-cell {
+      text-align: left;
+      min-width: 140px;
+    }
+
+    .word-title {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .word-tag {
+      font-size: 10px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0 4px;
+      background: #f7f9fc;
+    }
+
+    .word-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .result-cell {
+      min-width: 32px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .status.green { background: var(--pill-green); }
+    .status.red { background: var(--pill-red); }
+    .status.gray { background: var(--pill-gray); color: var(--muted); }
+
+    .sidebar {
+      width: 320px;
+      flex-shrink: 0;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-title {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .btn {
+      border: 1px solid #d0d7e2;
+      background: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: #1f2933;
+      color: #fff;
+      border-color: #1f2933;
+      font-weight: 600;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .metric .value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .metric .sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .progress {
+      margin-top: 6px;
+      height: 6px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--green);
+    }
+
+    .list {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+    }
+
+    .list table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .list th,
+    .list td {
+      padding: 6px 4px;
+      text-align: center;
+      color: var(--text);
+    }
+
+    .list th {
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 1100px) {
+      .page {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card heatmap-card">
+      <div class="header">
+        <div class="header-title">练习热力图矩阵</div>
+        <div class="legend">
+          <span>行=单词 · 列=日期 · 颜色=当日练习结果（绿色=全对，橙=有漏/易错，灰=未练）</span>
+          <div class="legend-item"><span class="dot empty"></span> 未练</div>
+          <div class="legend-item"><span class="dot green"></span> 全对</div>
+          <div class="legend-item"><span class="dot orange"></span> 有错(少)</div>
+          <div class="legend-item"><span class="dot red"></span> 有错(多)</div>
+        </div>
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="word-cell">单词</th>
+            <th>12-22</th><th>12-23</th><th>12-24</th><th>12-25</th><th>12-26</th><th>12-27</th><th>12-28</th><th>12-29</th><th>12-30</th><th>12-31</th><th>01-01</th><th>01-02</th><th>01-03</th><th>01-04</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">improve <span class="word-tag">考</span></div>
+              <div class="word-meta">U6 · Unit 6 · Review · W 1360</div>
+            </td>
+            <td class="result-cell">4/7</td>
+            <td><span class="dot red"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot orange"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot red"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">journey <span class="word-tag">考</span></div>
+              <div class="word-meta">U5 · Unit 5 · Travel · W 1300</div>
+            </td>
+            <td>1/2</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot red"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">please <span class="word-tag">考</span></div>
+              <div class="word-meta">U1 · Unit 1 · Greetings · W 1200</div>
+            </td>
+            <td>4/6</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot red"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">lesson <span class="word-tag">考</span></div>
+              <div class="word-meta">U3 · Unit 3 · School · W 1200</div>
+            </td>
+            <td>4/5</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot red"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">ticket <span class="word-tag">考</span></div>
+              <div class="word-meta">U5 · Unit 5 · Travel · W 1200</div>
+            </td>
+            <td>4/4</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">homework <span class="word-tag">考</span></div>
+              <div class="word-meta">U3 · Unit 3 · School · W 1180</div>
+            </td>
+            <td>5/6</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot orange"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">thanks <span class="word-tag">考</span></div>
+              <div class="word-meta">U1 · Unit 1 · Greetings · W 1140</div>
+            </td>
+            <td>6/6</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">banana <span class="word-tag">考</span></div>
+              <div class="word-meta">U4 · Unit 4 · Food · W 1120</div>
+            </td>
+            <td>2/3</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot red"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">student <span class="word-tag">考</span></div>
+              <div class="word-meta">U3 · Unit 3 · School · W 1080</div>
+            </td>
+            <td>3/3</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">remember <span class="word-tag">考</span></div>
+              <div class="word-meta">U6 · Unit 6 · Review · W 1000</div>
+            </td>
+            <td>7/7</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot green"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">mother <span class="word-tag">考</span></div>
+              <div class="word-meta">U2 · Unit 2 · Family · W 980</div>
+            </td>
+            <td>0/1</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot red"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+          <tr>
+            <td class="word-cell">
+              <div class="word-title">brother <span class="word-tag">考</span></div>
+              <div class="word-meta">U2 · Unit 2 · Family · W 940</div>
+            </td>
+            <td class="word-meta">范围内未练</td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+            <td><span class="dot empty"></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card sidebar">
+      <div class="sidebar-header">
+        <div>
+          <div class="sidebar-title">详情</div>
+          <div>Session · 2026-01-04</div>
+        </div>
+        <button class="btn primary">Session</button>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="label">练习次数</div>
+          <div class="value">2</div>
+          <div class="sub">涉及单词 <strong>2</strong></div>
+        </div>
+        <div class="metric">
+          <div class="label">正确率</div>
+          <div class="value">50%</div>
+          <div class="sub">错误次数 <strong>1</strong></div>
+        </div>
+      </div>
+
+      <div class="list">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="color:var(--muted);">单元分布</div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;">
+            <span>U3</span><span>50%</span>
+          </div>
+          <div class="progress"><div class="progress-bar" style="width:50%;"></div></div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;">
+            <span>U6</span><span>50%</span>
+          </div>
+          <div class="progress"><div class="progress-bar" style="width:50%;"></div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0;">
+          <div style="color:var(--muted);">当日单词列表</div>
+          <button class="btn" style="padding:4px 8px;">导出当日</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;">单词</th>
+              <th>次数</th>
+              <th>正确</th>
+              <th>错误</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align:left;">improve<br><span class="word-meta">U6 · W 1360</span></td>
+              <td>1</td><td>0</td><td>1</td>
+              <td><span class="status red">错误 1</span></td>
+            </tr>
+            <tr>
+              <td style="text-align:left;">homework<br><span class="word-meta">U3 · W 1180</span></td>
+              <td>1</td><td>1</td><td>0</td>
+              <td><span class="status green">全对</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="hint">提示：点击列表或矩阵中的单词，切换到「单词」面板查看权重原因与历史。</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

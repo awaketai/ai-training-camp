@@ -4,3 +4,4 @@
 - KISS 原则
 - 代码质量：DRY,YAGNI, SOLIC,etc。函数原则上不超过 150 行，参数原则上不超过 7 个。
 - 使用 builder 模式
+
