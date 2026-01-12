@@ -41,5 +41,10 @@ code-review-skill 安装：
 
 为 ./wk5/pg-mcp 项目生成 CLAUDE.md,要求：代码要符合 python best practice / idomatic python，符合 SOLID/DRY/KISS/YAGNI 等设计思路，代码质量和测试质量要高，性能要好
 
+## 构建 pg-mcp 实现计划
 
+根据 ./specs/w5/0005-pg-mcp-desigh.md 文档，构建 pg-mcp 的实现计划，think ultra hard，文档放在 ./specs/w5/0006-pg-mcp-impl-plan.md 文档中
 
+## 实现 pg-mcp 
+
+根据 ./specs/w5/0006-pg-mcp-impl-plan.md 和 ./specs/w5/0005-pg-mcp-design.md 文档，使用 sub agent 完整实现 phase 0-4。提交。之后调用 codex review skill 让 codex review 整个代码，看其是否符合 desigh 和 impl plan。把 review 结果写入到 ./specs/w5/0007-pg-mcp-impl-plan-review.md 文件中
