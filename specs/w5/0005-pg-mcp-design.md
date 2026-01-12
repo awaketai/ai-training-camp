@@ -4,7 +4,7 @@
 
 | 项目 | 内容 |
 |-----|------|
-| 文档版本 | v1.0 |
+| 文档版本 | v1.1 |
 | 创建日期 | 2026-01-12 |
 | 关联文档 | [0003-pg-mcp-prd.md](./0003-pg-mcp-prd.md) |
 | 技术栈 | FastMCP, Asyncpg, SQLGlot, Pydantic, OpenAI |
@@ -84,12 +84,12 @@
 
 | 库 | 版本 | 用途 | 选型理由 |
 |---|------|------|---------|
-| **fastmcp** | ^2.0 | MCP Server 框架 | 官方推荐，简化 MCP 协议实现，装饰器风格 API |
-| **asyncpg** | ^0.29 | PostgreSQL 异步驱动 | 高性能、原生异步、连接池支持 |
-| **sqlglot** | ^26.0 | SQL 解析与验证 | 支持 PostgreSQL 方言、AST 操作、SQL 转换 |
-| **pydantic** | ^2.0 | 数据验证与配置 | 类型安全、环境变量支持、JSON Schema 生成 |
-| **pydantic-settings** | ^2.0 | 配置管理 | 支持 YAML/ENV 配置、嵌套模型 |
-| **openai** | ^1.0 | LLM API 客户端 | 官方 SDK，支持异步、流式响应 |
+| **fastmcp** | >=2.14,<3.0 | MCP Server 框架 | 官方推荐，简化 MCP 协议实现，装饰器风格 API |
+| **asyncpg** | >=0.31 | PostgreSQL 异步驱动 | 高性能、原生异步、连接池支持 |
+| **sqlglot** | >=27.0 | SQL 解析与验证 | 支持 PostgreSQL 方言、AST 操作、SQL 转换 |
+| **pydantic** | >=2.0 | 数据验证与配置 | 类型安全、环境变量支持、JSON Schema 生成 |
+| **pydantic-settings** | >=2.0 | 配置管理 | 支持 YAML/ENV 配置、嵌套模型 |
+| **openai** | >=1.0 | LLM API 客户端 | 官方 SDK，支持异步、流式响应 |
 
 ### 2.2 辅助依赖
 
@@ -221,17 +221,56 @@ class ValidatorConfig(BaseModel):
         default=["pg_catalog", "information_schema", "pg_toast"],
         description="禁止访问的 schema"
     )
+    # 危险函数黑名单（绝对禁止）
+    blocked_functions: list[str] = Field(
+        default=[
+            # 文件系统操作
+            "pg_read_file", "pg_read_binary_file", "pg_ls_dir", "pg_stat_file",
+            "pg_file_write", "pg_file_rename", "pg_file_unlink",
+            # 外部连接
+            "dblink", "dblink_connect", "dblink_connect_u", "dblink_exec",
+            "dblink_open", "dblink_fetch", "dblink_close",
+            # 大对象操作
+            "lo_import", "lo_export", "lo_get", "lo_put", "lo_from_bytea",
+            # 程序执行
+            "pg_execute_server_program",
+            # COPY 操作
+            "copy_to", "copy_from",
+            # XML 导出（可能泄露数据）
+            "query_to_xml", "table_to_xml", "database_to_xml",
+            # 系统管理
+            "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf",
+            "pg_rotate_logfile", "pg_switch_wal",
+            # 睡眠（DoS 风险）
+            "pg_sleep", "pg_sleep_for", "pg_sleep_until",
+        ],
+        description="危险函数黑名单（绝对禁止）"
+    )
     allowed_functions: list[str] = Field(
         default=[
             # 聚合函数
             "count", "sum", "avg", "min", "max", "array_agg", "string_agg",
+            "bool_and", "bool_or", "bit_and", "bit_or", "every",
             # 窗口函数
-            "row_number", "rank", "dense_rank", "lag", "lead", "first_value", "last_value",
+            "row_number", "rank", "dense_rank", "lag", "lead",
+            "first_value", "last_value", "nth_value", "ntile",
+            "percent_rank", "cume_dist",
             # 标量函数
             "coalesce", "nullif", "greatest", "least", "abs", "round", "ceil", "floor",
-            "length", "lower", "upper", "trim", "substring", "replace", "concat",
+            "length", "lower", "upper", "trim", "ltrim", "rtrim",
+            "substring", "replace", "concat", "concat_ws", "split_part",
+            "left", "right", "reverse", "repeat", "position", "strpos",
+            # 日期时间函数
             "date", "date_trunc", "extract", "now", "current_date", "current_timestamp",
-            "cast", "to_char", "to_date", "to_timestamp",
+            "age", "date_part", "make_date", "make_time", "make_timestamp",
+            # 类型转换
+            "cast", "to_char", "to_date", "to_timestamp", "to_number",
+            # 条件函数
+            "case", "nullif", "coalesce",
+            # JSON 函数（只读）
+            "json_extract_path", "json_extract_path_text",
+            "jsonb_extract_path", "jsonb_extract_path_text",
+            "json_array_length", "jsonb_array_length",
         ],
         description="允许的函数白名单"
     )
@@ -274,11 +313,13 @@ class Settings(BaseSettings):
 ```python
 # src/pg_mcp/models/schema.py
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ForeignKeyInfo(BaseModel):
     """外键信息"""
+    model_config = ConfigDict(populate_by_name=True)
+
     schema_name: str = Field(alias="schema")
     table: str
     column: str
@@ -305,6 +346,8 @@ class IndexInfo(BaseModel):
 
 class TableInfo(BaseModel):
     """表信息"""
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     schema_name: str = Field(default="public", alias="schema")
     comment: str | None = None
@@ -315,6 +358,8 @@ class TableInfo(BaseModel):
 
 class ViewInfo(BaseModel):
     """视图信息"""
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     schema_name: str = Field(default="public", alias="schema")
     comment: str | None = None
@@ -323,6 +368,8 @@ class ViewInfo(BaseModel):
 
 class EnumTypeInfo(BaseModel):
     """枚举类型信息"""
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     schema_name: str = Field(default="public", alias="schema")
     values: list[str]
@@ -845,11 +892,15 @@ class DatabasePool:
         return self.pools[name]
 
     def _build_dsn(self, config: DatabaseConfig) -> str:
-        """构建 DSN 连接字符串"""
-        password = config.password.get_secret_value()
+        """构建 DSN 连接字符串（带 URL 编码防止特殊字符注入）"""
+        from urllib.parse import quote_plus
+
+        # URL 编码用户名和密码，防止特殊字符导致连接字符串解析错误
+        user = quote_plus(config.user)
+        password = quote_plus(config.password.get_secret_value())
 
         dsn = (
-            f"postgresql://{config.user}:{password}"
+            f"postgresql://{user}:{password}"
             f"@{config.host}:{config.port}/{config.database}"
         )
 
@@ -861,9 +912,18 @@ class DatabasePool:
 
     @staticmethod
     async def _setup_connection(conn: asyncpg.Connection):
-        """连接初始化回调 - 设置只读模式"""
-        await conn.execute("SET default_transaction_read_only = on")
+        """
+        连接初始化回调 - 设置只读模式和安全限制
+
+        安全措施：
+        1. SESSION CHARACTERISTICS 级别的只读设置（比 SET 更难绕过）
+        2. 查询超时限制
+        3. 空闲事务超时（防止连接泄漏）
+        """
+        # 使用 SESSION CHARACTERISTICS 设置只读（更强的只读保证）
+        await conn.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
         await conn.execute("SET statement_timeout = '30s'")
+        await conn.execute("SET idle_in_transaction_session_timeout = '60s'")
 ```
 
 ### 5.4 Schema 发现与缓存
@@ -994,18 +1054,20 @@ class SchemaCache:
         pool = self.pool.get_pool(db_name)
 
         async with pool.acquire() as conn:
-            # 并行执行所有查询
-            tables_task = conn.fetch(TABLES_QUERY)
-            columns_task = conn.fetch(COLUMNS_QUERY)
-            fks_task = conn.fetch(FOREIGN_KEYS_QUERY)
-            indexes_task = conn.fetch(INDEXES_QUERY)
-            enums_task = conn.fetch(ENUM_TYPES_QUERY)
-
-            tables_rows = await tables_task
-            columns_rows = await columns_task
-            fks_rows = await fks_task
-            indexes_rows = await indexes_task
-            enums_rows = await enums_task
+            # 使用 asyncio.gather 真正并行执行所有查询
+            (
+                tables_rows,
+                columns_rows,
+                fks_rows,
+                indexes_rows,
+                enums_rows
+            ) = await asyncio.gather(
+                conn.fetch(TABLES_QUERY),
+                conn.fetch(COLUMNS_QUERY),
+                conn.fetch(FOREIGN_KEYS_QUERY),
+                conn.fetch(INDEXES_QUERY),
+                conn.fetch(ENUM_TYPES_QUERY),
+            )
 
         # 构建 Schema 结构
         schema = self._build_schema(
@@ -1145,7 +1207,7 @@ logger = structlog.get_logger()
 
 
 class SQLValidator:
-    """SQL 安全校验器"""
+    """SQL 安全校验器 - 基于 AST 的安全验证"""
 
     # 禁止的语句类型
     BLOCKED_STATEMENT_TYPES = {
@@ -1154,35 +1216,26 @@ class SQLValidator:
         exp.Transaction, exp.Commit, exp.Rollback,
     }
 
-    # 禁止的关键词（用于额外检查）
-    BLOCKED_KEYWORDS = {
-        "insert", "update", "delete", "drop", "create", "alter",
-        "truncate", "grant", "revoke", "copy", "execute", "call",
-        "do", "lock", "listen", "notify", "vacuum", "analyze",
-        "reindex", "cluster", "set", "reset", "discard",
-    }
-
     def __init__(self, config: ValidatorConfig):
         self.config = config
         self.allowed_functions = set(f.lower() for f in config.allowed_functions)
+        self.blocked_functions = set(f.lower() for f in config.blocked_functions)
         self.blocked_schemas = set(s.lower() for s in config.blocked_schemas)
 
     def validate(self, sql: str) -> ValidationResult:
-        """验证 SQL 安全性"""
+        """
+        验证 SQL 安全性
+
+        安全策略：
+        1. 仅依赖 AST 解析进行验证（不使用关键词黑名单，避免绕过）
+        2. 只允许单条 SELECT 语句
+        3. 危险函数黑名单 + 允许函数白名单双重检查
+        4. 强制添加 LIMIT
+        """
         errors = []
         warnings = []
 
-        # 1. 预处理检查（关键词黑名单）
-        sql_lower = sql.lower()
-        for keyword in self.BLOCKED_KEYWORDS:
-            # 使用简单的词边界检查
-            if f" {keyword} " in f" {sql_lower} ":
-                errors.append(f"禁止使用关键词: {keyword.upper()}")
-
-        if errors:
-            return ValidationResult(is_valid=False, errors=errors)
-
-        # 2. 解析 SQL
+        # 1. 解析 SQL（AST 解析是安全验证的基础）
         try:
             parsed = sqlglot.parse(sql, dialect="postgres")
         except ParseError as e:
@@ -1197,33 +1250,40 @@ class SQLValidator:
                 errors=["无法解析 SQL"]
             )
 
-        # 3. 遍历每个语句进行检查
-        for statement in parsed:
-            # 3.1 检查语句类型
-            stmt_errors = self._check_statement_type(statement)
-            errors.extend(stmt_errors)
+        # 2. 只允许单条语句（防止多语句注入）
+        if len(parsed) != 1:
+            return ValidationResult(
+                is_valid=False,
+                errors=["仅允许单条 SQL 语句"]
+            )
 
-            # 3.2 检查表访问
-            table_errors = self._check_table_access(statement)
-            errors.extend(table_errors)
+        statement = parsed[0]
 
-            # 3.3 检查函数调用
-            func_errors = self._check_functions(statement)
-            errors.extend(func_errors)
+        # 3. 检查语句类型（必须是 SELECT）
+        stmt_errors = self._check_statement_type(statement)
+        errors.extend(stmt_errors)
 
-            # 3.4 检查子查询深度
-            depth_errors = self._check_subquery_depth(statement)
-            errors.extend(depth_errors)
+        # 4. 检查表访问权限
+        table_errors = self._check_table_access(statement)
+        errors.extend(table_errors)
 
-            # 3.5 检查 JOIN 数量
-            join_warnings = self._check_join_count(statement)
-            warnings.extend(join_warnings)
+        # 5. 检查函数调用（黑名单优先，然后白名单）
+        func_errors = self._check_functions(statement)
+        errors.extend(func_errors)
+
+        # 6. 检查子查询深度
+        depth_errors = self._check_subquery_depth(statement)
+        errors.extend(depth_errors)
+
+        # 7. 检查 JOIN 数量
+        join_warnings = self._check_join_count(statement)
+        warnings.extend(join_warnings)
 
         if errors:
             return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
-        # 4. 检查并添加 LIMIT
-        modified_sql = self._ensure_limit(parsed[0], sql)
+        # 8. 检查并添加 LIMIT
+        modified_sql = self._ensure_limit(statement, sql)
         if modified_sql != sql:
             warnings.append(f"已自动添加 LIMIT {self.config.default_limit}")
 
@@ -1261,18 +1321,30 @@ class SQLValidator:
         return errors
 
     def _check_functions(self, statement: exp.Expression) -> list[str]:
-        """检查函数调用是否在白名单内"""
+        """
+        检查函数调用安全性
+
+        策略：
+        1. 首先检查危险函数黑名单（绝对禁止）
+        2. 然后检查是否在允许的白名单内
+        """
         errors = []
 
         for func in statement.find_all(exp.Func):
             func_name = func.sql_name().lower()
 
-            # 跳过类型转换
+            # 跳过类型转换（CAST 是安全的）
             if isinstance(func, exp.Cast):
                 continue
 
+            # 1. 检查危险函数黑名单（优先级最高）
+            if func_name in self.blocked_functions:
+                errors.append(f"禁止调用危险函数: {func_name}")
+                continue
+
+            # 2. 检查是否在允许的白名单内
             if func_name not in self.allowed_functions:
-                errors.append(f"禁止的函数调用: {func_name}")
+                errors.append(f"函数不在允许列表中: {func_name}")
 
         return errors
 
