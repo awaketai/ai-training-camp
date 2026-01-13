@@ -67,8 +67,9 @@ dmypy.json
 *.sqlite
 *.sqlite3
 
-# Test fixtures (ignore generated test data)
-fixtures/
+# Test fixtures backups (ignore generated backup files)
+fixtures/backups/
+fixtures/*.dump
 
 # Temporary files
 *.tmp
