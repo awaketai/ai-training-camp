@@ -47,4 +47,19 @@ code-review-skill 安装：
 
 ## 实现 pg-mcp 
 
-根据 ./specs/w5/0006-pg-mcp-impl-plan.md 和 ./specs/w5/0005-pg-mcp-design.md 文档，使用 sub agent 完整实现 phase 0-4。提交。之后调用 codex review skill 让 codex review 整个代码，看其是否符合 desigh 和 impl plan。把 review 结果写入到 ./specs/w5/0007-pg-mcp-impl-plan-review.md 文件中
+根据 ./specs/w5/0006-pg-mcp-impl-plan.md 和 ./specs/w5/0005-pg-mcp-design.md 文档，使用 sub agent 完整实现 phase 0-4。之后调用 codex review skill 让 codex review 整个代码，看其是否符合 desigh 和 impl plan。把 review 结果写入到 ./specs/w5/0007-pg-mcp-impl-plan-review.md 文件中
+
+根据 ./specs/w5/0006-pg-mcp-impl-plan.md 和 ./specs/w5/0005-pg-mcp-design.md 文档，使用 sub agent 完整实现 phase 5-10。之后调用 codex review skill 让 codex review 整个代码，看其是否符合 desigh 和 impl plan。把 review 结果写入到 ./specs/w5/0008-pg-mcp-impl-plan-review.md 文件中
+
+
+## 生成测试计划
+
+根据 ./specs/w5/0006-pg-mcp-impl-plan.md 和 ./specs/w5/0005-pg-mcp-design.md 文档，构建 pg-mcp 的测试计划，think ultra hard，文档放在 ./specs/w5/0009-pg-mcp-test-plan.md，之后调用 codex review skill 让 codex review  ./specs/w5/0009-pg-mcp-test-plan.md 文件，并构建 ./specs/w5/0010-pg-mcp-test-plan-review.md
+
+## 测试数据生成
+
+根据 @specs/w5/0003-pg-mcp-prd.md 在 ./w5/pg-mcp/fixtures 下构建三个有意义的数据库，分别有少量、中等量级，以及大量的 table/view/types/index 等 schema，且有足够多的数据。生成这三个数据库的 sql 文件，并构建 Makefile 来重建这些测试数据库
+
+## 测试问题生成
+
+根据这些 fixture，假设用户要用自然语言提问，然后 pg-mcp 来生成相应的 sql，帮我生成一个 md 的文档，里面包含各种对数据库内部数据的简单到复杂的提问，文档放在 ./specs/w5/0011-pg-mcp-user-test.md
