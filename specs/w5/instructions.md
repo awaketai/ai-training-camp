@@ -57,7 +57,7 @@ code-review-skill 安装：
 
 ## 测试数据生成
 
-根据 @specs/w5/0003-pg-mcp-prd.md 在 ./w5/pg-mcp/fixtures 下构建三个有意义的数据库，分别有少量、中等量级，以及大量的 table/view/types/index 等 schema，且有足够多的数据。生成这三个数据库的 sql 文件，并构建 Makefile 来重建这些测试数据库
+根据 @specs/w5/0003-pg-mcp-prd.md 在 ./w5/pg-mcp/fixtures 下构建三个有意义的数据库，分别有少量、中等量级(有50张表)，以及大量(有80张表)的 table/view/types/index 等 schema，且有足够多的数据。生成这三个数据库的 sql 文件，并构建 Makefile 来重建这些测试数据库
 
 ## 测试问题生成
 
