@@ -1,9 +1,9 @@
 ---
-name: sql-query
+name: pg-data
 description: Generate and execute safe, read-only SQL queries from natural language descriptions. Supports blog_small, ecommerce_medium, and erp_large databases. Use this skill when users need to query data, generate reports, or analyze business metrics from these databases.
 ---
 
-# SQL Query Generator
+# PostgreSQL Data Query Generator
 
 ## Overview
 
@@ -104,13 +104,13 @@ LIMIT n;
 Execute the SQL using docker exec:
 
 ```bash
-docker exec postgres psql -U root -d {database_name} -c "{sql_query}"
+docker exec postgres psql -U postgres -d {database_name} -c "{sql_query}"
 ```
 
 **Connection Info:**
 - Host: localhost (via docker)
 - Container: postgres
-- User: root
+- User: postgres
 - Databases: blog_small, ecommerce_medium, erp_large
 
 ### Step 5: Analyze Results and Score

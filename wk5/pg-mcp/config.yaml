@@ -7,7 +7,7 @@ databases:
     host: "127.0.0.1"
     port: 5432
     database: "blog_small"
-    user: "root"
+    user: "${DB_USER}"
     password: "${DB_PASSWORD}"  # 从环境变量读取
     ssl_mode: "disable"
     read_only: true
@@ -21,7 +21,7 @@ databases:
     host: "127.0.0.1"
     port: 5432
     database: "ecommerce_medium"
-    user: "root"
+    user: "${DB_USER}"
     password: "${DB_PASSWORD}"
     ssl_mode: "disable"
     read_only: true
@@ -33,7 +33,7 @@ databases:
     host: "127.0.0.1"
     port: 5432
     database: "erp_large"
-    user: "root"
+    user: "${DB_USER}"
     password: "${DB_PASSWORD}"
     ssl_mode: "disable"
     read_only: true

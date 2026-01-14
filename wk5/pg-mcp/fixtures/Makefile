@@ -12,8 +12,8 @@
 # PostgreSQL connection settings
 PGHOST ?= 127.0.0.1
 PGPORT ?= 5432
-PGUSER ?= root
-PGPASSWORD ?= admin123
+PGUSER ?= postgres
+PGPASSWORD ?= postgres
 export PGHOST PGPORT PGUSER PGPASSWORD
 
 # Database names
