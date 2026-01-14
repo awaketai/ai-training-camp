@@ -236,6 +236,17 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 }
 ```
 
+cursor 中添加使用
+
+```json
+"pg-mcp": {
+      "command": "uv",
+      "args": ["run", "--directory", "/mcp-path", "python", "-m", "pg_mcp"],
+      "cwd": "/mcp-path"
+    }
+```
+
+
 Restart Claude Desktop, and the `pg_query` tool will be available.
 
 ### Using the MCP Tool

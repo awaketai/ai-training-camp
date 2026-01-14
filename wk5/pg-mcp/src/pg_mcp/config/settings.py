@@ -248,8 +248,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="PG_MCP_",
         env_nested_delimiter="__",
-        yaml_file="config.yaml",
-        yaml_file_encoding="utf-8",
     )
 
     # 数据库配置（支持多个）

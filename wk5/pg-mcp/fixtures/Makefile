@@ -10,10 +10,10 @@
 # ============================================================================
 
 # PostgreSQL connection settings
-PGHOST ?= localhost
+PGHOST ?= 127.0.0.1
 PGPORT ?= 5432
-PGUSER ?= postgres
-PGPASSWORD ?=
+PGUSER ?= root
+PGPASSWORD ?= admin123
 export PGHOST PGPORT PGUSER PGPASSWORD
 
 # Database names
@@ -86,7 +86,8 @@ help:
 
 check-connection:
 	@echo "$(COLOR_BLUE)Checking PostgreSQL connection...$(COLOR_RESET)"
-	@psql -h $(PGHOST) -p $(PGPORT) -U $(PGUSER) -d postgres -c "SELECT version();" > /dev/null 2>&1 && \
+	@echo "$(COLOR_YELLOW)Debug: PGHOST=$(PGHOST) PGPORT=$(PGPORT) PGUSER=$(PGUSER)$(COLOR_RESET)"
+	@psql -h $(PGHOST) -p $(PGPORT) -U $(PGUSER) -d postgres -c "SELECT version();" && \
 		echo "$(COLOR_GREEN)✓ Connection successful$(COLOR_RESET)" || \
 		(echo "$(COLOR_RED)✗ Connection failed$(COLOR_RESET)" && exit 1)
 

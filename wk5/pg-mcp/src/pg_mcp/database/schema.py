@@ -4,7 +4,7 @@
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 
@@ -164,20 +164,12 @@ class SchemaCache:
             pool = self.pool.get_pool(db_name)
 
             async with pool.acquire() as conn:
-                # 使用 asyncio.gather 真正并行执行所有查询
-                (
-                    tables_rows,
-                    columns_rows,
-                    fks_rows,
-                    indexes_rows,
-                    enums_rows,
-                ) = await asyncio.gather(
-                    conn.fetch(TABLES_QUERY),
-                    conn.fetch(COLUMNS_QUERY),
-                    conn.fetch(FOREIGN_KEYS_QUERY),
-                    conn.fetch(INDEXES_QUERY),
-                    conn.fetch(ENUM_TYPES_QUERY),
-                )
+                # 串行执行查询（asyncpg 不支持单连接并发）
+                tables_rows = await conn.fetch(TABLES_QUERY)
+                columns_rows = await conn.fetch(COLUMNS_QUERY)
+                fks_rows = await conn.fetch(FOREIGN_KEYS_QUERY)
+                indexes_rows = await conn.fetch(INDEXES_QUERY)
+                enums_rows = await conn.fetch(ENUM_TYPES_QUERY)
 
             # 构建 Schema 结构
             schema = self._build_schema(
@@ -323,5 +315,5 @@ class SchemaCache:
         return DatabaseSchema(
             database_name=db_name,
             schemas=list(schema_map.values()),
-            loaded_at=datetime.utcnow().isoformat(),
+            loaded_at=datetime.now(timezone.utc).isoformat(),
         )

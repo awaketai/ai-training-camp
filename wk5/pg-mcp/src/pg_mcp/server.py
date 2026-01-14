@@ -12,6 +12,7 @@ from pg_mcp.config.loader import load_settings
 from pg_mcp.models.query import QueryRequest, QueryResult
 from pg_mcp.models.response import QueryResponse
 from pg_mcp.orchestrator.query import QueryOrchestrator
+from pg_mcp.utils.logger import setup_logging
 
 # 全局状态
 _orchestrator: QueryOrchestrator | None = None
@@ -31,8 +32,16 @@ async def lifespan(app: FastMCP) -> AsyncIterator[None]:
     """
     global _orchestrator
 
-    # 启动时初始化
+    # 加载配置
     settings = load_settings()
+
+    # 初始化日志系统（MCP 模式下禁用彩色输出）
+    setup_logging(
+        level=settings.log_level,
+        log_format="console",  # 使用 console 格式，但禁用颜色
+    )
+
+    # 启动时初始化
     _orchestrator = QueryOrchestrator(settings)
     await _orchestrator.initialize()
 

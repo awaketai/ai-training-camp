@@ -61,4 +61,4 @@ code-review-skill 安装：
 
 ## 测试问题生成
 
-根据这些 fixture，假设用户要用自然语言提问，然后 pg-mcp 来生成相应的 sql，帮我生成一个 md 的文档，里面包含各种对数据库内部数据的简单到复杂的提问，文档放在 ./specs/w5/0011-pg-mcp-user-test.md
+根据这些 fixture，假设用户要用自然语言提问，然后 pg-mcp 来生成相应的 sql，帮我生成一个 md 的文档，里面包含各种对数据库内部数据的简单到复杂的提问，每个数据量级的类型问题在5-8个既可，文档放在 ./specs/w5/0011-pg-mcp-user-test.md

@@ -24,9 +24,10 @@ def setup_logging(
         log_format: 输出格式，可选 json 或 console
     """
     # 设置标准库日志级别
+    # 注意：MCP 协议要求 stdout 只用于 JSON-RPC，日志必须输出到 stderr
     logging.basicConfig(
         format="%(message)s",
-        stream=sys.stdout,
+        stream=sys.stderr,
         level=getattr(logging, level),
     )
 
@@ -43,7 +44,8 @@ def setup_logging(
     if log_format == "json":
         renderer: Processor = structlog.processors.JSONRenderer()
     else:
-        renderer = structlog.dev.ConsoleRenderer(colors=True)
+        # MCP 协议要求禁用彩色输出（避免 Rich 库的边框字符）
+        renderer = structlog.dev.ConsoleRenderer(colors=False)
 
     structlog.configure(
         processors=[
