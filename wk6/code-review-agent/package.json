@@ -1,0 +1,21 @@
+{
+  "name": "code-review-agent",
+  "version": "1.0.0",
+  "description": "Code review agent with read_file, write_file, and git tools",
+  "type": "module",
+  "main": "example.js",
+  "scripts": {
+    "review": "npx tsx example.ts",
+    "build": "tsc"
+  },
+  "author": "asher",
+  "license": "ISC",
+  "dependencies": {
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
