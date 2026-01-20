@@ -7,3 +7,9 @@
 [submodule "vendors/open-notebook"]
 	path = vendors/open-notebook
 	url = git@github.com:lfnovo/open-notebook.git
+[submodule "vendors/claude-code-decypher"]
+	path = vendors/claude-code-decypher
+	url = git@github.com:tyrchen/claude-code-decypher.git
+[submodule "vendors/opencode"]
+	path = vendors/opencode
+	url = git@github.com:anomalyco/opencode.git
