@@ -1,5 +1,5 @@
 import { defineTool } from "simple-agent";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 
 interface GhArgs {
   command: string;
@@ -11,6 +11,12 @@ interface GhArgs {
 const ALLOWED_COMMANDS = ["pr", "issue", "repo"];
 const ALLOWED_PR_SUBCOMMANDS = [
   "view", "diff", "list", "checks", "status", "comment"
+];
+const ALLOWED_ISSUE_SUBCOMMANDS = [
+  "view", "list", "status", "comment"
+];
+const ALLOWED_REPO_SUBCOMMANDS = [
+  "view", "list", "clone"
 ];
 
 export const ghTool = defineTool<GhArgs>({
@@ -43,26 +49,46 @@ Common patterns:
     required: ["command", "subcommand"]
   },
   execute: async (args) => {
-    // Security check
+    // Security check: validate command
     if (!ALLOWED_COMMANDS.includes(args.command)) {
       return {
         output: "",
-        error: `Command '${args.command}' is not allowed`
+        error: `Command '${args.command}' is not allowed. Allowed: ${ALLOWED_COMMANDS.join(", ")}`
       };
     }
 
-    if (args.command === "pr" && !ALLOWED_PR_SUBCOMMANDS.includes(args.subcommand)) {
+    // Security check: validate subcommand based on command type
+    let allowedSubcommands: string[];
+    switch (args.command) {
+      case "pr":
+        allowedSubcommands = ALLOWED_PR_SUBCOMMANDS;
+        break;
+      case "issue":
+        allowedSubcommands = ALLOWED_ISSUE_SUBCOMMANDS;
+        break;
+      case "repo":
+        allowedSubcommands = ALLOWED_REPO_SUBCOMMANDS;
+        break;
+      default:
+        return {
+          output: "",
+          error: `Subcommand validation not configured for '${args.command}'`
+        };
+    }
+
+    if (!allowedSubcommands.includes(args.subcommand)) {
       return {
         output: "",
-        error: `PR subcommand '${args.subcommand}' is not allowed`
+        error: `Subcommand '${args.subcommand}' is not allowed for '${args.command}'. Allowed: ${allowedSubcommands.join(", ")}`
       };
     }
 
     try {
       const cmdArgs = args.args ?? [];
-      const fullCommand = ["gh", args.command, args.subcommand, ...cmdArgs].join(" ");
 
-      const output = execSync(fullCommand, {
+      // Use execFileSync to prevent command injection
+      // Arguments are passed as array, not shell-interpolated
+      const output = execFileSync("gh", [args.command, args.subcommand, ...cmdArgs], {
         encoding: "utf-8",
         maxBuffer: 10 * 1024 * 1024,
         cwd: process.cwd()

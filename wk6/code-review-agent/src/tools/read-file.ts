@@ -1,11 +1,27 @@
 import { defineTool } from "simple-agent";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { execFileSync } from "child_process";
 
 interface ReadFileArgs {
   path: string;
   start_line?: number;
   end_line?: number;
+}
+
+/**
+ * Get git repository root directory
+ */
+function getGitRoot(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf-8",
+      cwd: process.cwd()
+    }).trim();
+  } catch {
+    // Fallback to current directory if not in a git repo
+    return process.cwd();
+  }
 }
 
 export const readFileTool = defineTool<ReadFileArgs>({
@@ -16,7 +32,7 @@ export const readFileTool = defineTool<ReadFileArgs>({
     properties: {
       path: {
         type: "string",
-        description: "File path relative to project root"
+        description: "File path relative to git repository root (e.g., 'src/index.ts')"
       },
       start_line: {
         type: "number",
@@ -31,7 +47,17 @@ export const readFileTool = defineTool<ReadFileArgs>({
   },
   execute: async (args) => {
     try {
-      const filePath = path.resolve(process.cwd(), args.path);
+      const projectRoot = getGitRoot();
+      const filePath = path.resolve(projectRoot, args.path);
+
+      // Security check: ensure file is within project directory
+      if (!filePath.startsWith(projectRoot + path.sep) && filePath !== projectRoot) {
+        return {
+          output: "",
+          error: "Access denied: file path must be within the project directory"
+        };
+      }
+
       const content = await fs.readFile(filePath, "utf-8");
       const lines = content.split("\n");
 

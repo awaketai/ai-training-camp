@@ -1,5 +1,5 @@
 import { defineTool } from "simple-agent";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 
 interface GitArgs {
   command: string;
@@ -51,9 +51,10 @@ Common patterns:
 
     try {
       const cmdArgs = args.args ?? [];
-      const fullCommand = ["git", args.command, ...cmdArgs].join(" ");
 
-      const output = execSync(fullCommand, {
+      // Use execFileSync to prevent command injection
+      // Arguments are passed as array, not shell-interpolated
+      const output = execFileSync("git", [args.command, ...cmdArgs], {
         encoding: "utf-8",
         maxBuffer: 10 * 1024 * 1024, // 10MB
         cwd: process.cwd()

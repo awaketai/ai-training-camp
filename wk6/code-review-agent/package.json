@@ -5,12 +5,16 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "code-review": "./dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "example:branch": "npx tsx examples/review-branch.ts",
     "example:commit": "npx tsx examples/review-commit.ts",
-    "example:pr": "npx tsx examples/review-pr.ts"
+    "example:pr": "npx tsx examples/review-pr.ts",
+    "cli": "npx tsx src/cli.ts"
   },
   "dependencies": {
     "simple-agent": "file:../simple-agent"

@@ -1,11 +1,27 @@
 import { defineTool } from "simple-agent";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { execFileSync } from "child_process";
 
 interface WriteFileArgs {
   path: string;
   content: string;
   mode?: "overwrite" | "append";
+}
+
+/**
+ * Get git repository root directory
+ */
+function getGitRoot(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf-8",
+      cwd: process.cwd()
+    }).trim();
+  } catch {
+    // Fallback to current directory if not in a git repo
+    return process.cwd();
+  }
 }
 
 export const writeFileTool = defineTool<WriteFileArgs>({
@@ -16,7 +32,7 @@ export const writeFileTool = defineTool<WriteFileArgs>({
     properties: {
       path: {
         type: "string",
-        description: "File path relative to project root"
+        description: "File path relative to git repository root"
       },
       content: {
         type: "string",
@@ -32,8 +48,17 @@ export const writeFileTool = defineTool<WriteFileArgs>({
   },
   execute: async (args) => {
     try {
-      const filePath = path.resolve(process.cwd(), args.path);
+      const projectRoot = getGitRoot();
+      const filePath = path.resolve(projectRoot, args.path);
       const dir = path.dirname(filePath);
+
+      // Security check: ensure file is within project directory
+      if (!filePath.startsWith(projectRoot + path.sep) && filePath !== projectRoot) {
+        return {
+          output: "",
+          error: "Access denied: file path must be within the project directory"
+        };
+      }
 
       // Ensure directory exists
       await fs.mkdir(dir, { recursive: true });
