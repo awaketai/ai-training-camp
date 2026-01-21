@@ -1,21 +1,23 @@
 {
   "name": "code-review-agent",
   "version": "1.0.0",
-  "description": "Code review agent with read_file, write_file, and git tools",
+  "description": "A code review agent built on Simple Agent SDK",
   "type": "module",
-  "main": "example.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "review": "npx tsx example.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "example:branch": "npx tsx examples/review-branch.ts",
+    "example:commit": "npx tsx examples/review-commit.ts",
+    "example:pr": "npx tsx examples/review-pr.ts"
   },
-  "author": "asher",
-  "license": "ISC",
   "dependencies": {
-    "openai": "^4.0.0"
+    "simple-agent": "file:../simple-agent"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   }
 }
