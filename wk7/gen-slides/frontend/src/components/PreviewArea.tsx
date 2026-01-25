@@ -7,7 +7,7 @@ interface PreviewAreaProps {
   sid: string;
   isGenerating: boolean;
   onGenerate: () => void;
-  onTextUpdate: (text: string) => void;
+  onTextUpdate: (text: string) => Promise<void>;
 }
 
 export function PreviewArea({
@@ -40,6 +40,17 @@ export function PreviewArea({
     }
   };
 
+  const handleSaveAndGenerate = async () => {
+    // Save first if text changed
+    if (editText !== slide.text) {
+      await onTextUpdate(editText);
+    }
+    // Exit editing mode
+    setIsEditing(false);
+    // Generate image
+    onGenerate();
+  };
+
   const handleCancel = () => {
     setIsEditing(false);
     setEditText(slide.text);
@@ -49,10 +60,10 @@ export function PreviewArea({
     if (e.key === "Escape") {
       handleCancel();
     }
-    // Ctrl/Cmd + Enter to save
+    // Ctrl/Cmd + Enter to save and generate
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      handleSave();
+      handleSaveAndGenerate();
     }
   };
 
@@ -61,6 +72,7 @@ export function PreviewArea({
       <div className="max-w-3xl w-full aspect-video bg-white rounded-lg shadow-lg overflow-hidden">
         {slide.current_image ? (
           <img
+            key={slide.current_image}
             src={imageUrl(sid, slide.current_image)}
             alt={`Slide ${slide.index + 1}`}
             className="w-full h-full object-contain"
@@ -93,10 +105,33 @@ export function PreviewArea({
               取消
             </button>
             <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              onClick={handleSaveAndGenerate}
+              disabled={isGenerating || !editText.trim()}
+              className="px-6 py-2 bg-primary text-white rounded hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title={!editText.trim() ? "请先输入文本" : "Ctrl+Enter 快速生成"}
             >
-              保存 (Ctrl+Enter)
+              {isGenerating && (
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              )}
+              {isGenerating ? "生成中..." : "生成图片"}
             </button>
           </div>
         </div>

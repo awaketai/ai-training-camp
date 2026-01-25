@@ -1,4 +1,4 @@
-import { apiGet, apiPut, apiPost } from "./client";
+import { apiGet, apiPut, apiPost, apiDelete } from "./client";
 import type {
   SlidesData,
   UpdateSlideTextRequest,
@@ -6,6 +6,7 @@ import type {
   ReorderSlidesRequest,
   AddSlideRequest,
   AddSlideResponse,
+  DeleteSlideResponse,
 } from "../types";
 
 export async function fetchSlides(sid: string): Promise<SlidesData> {
@@ -36,4 +37,11 @@ export async function addSlide(
 ): Promise<AddSlideResponse> {
   const body: AddSlideRequest = { text, position };
   return apiPost<AddSlideResponse>(`/slides/${sid}/add`, body);
+}
+
+export async function deleteSlide(
+  sid: string,
+  index: number,
+): Promise<DeleteSlideResponse> {
+  return apiDelete<DeleteSlideResponse>(`/slides/${sid}/${index}`);
 }

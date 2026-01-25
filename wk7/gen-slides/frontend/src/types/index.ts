@@ -74,3 +74,7 @@ export interface AddSlideResponse {
   success: boolean;
   slide: Slide;
 }
+
+export interface DeleteSlideResponse {
+  success: boolean;
+}

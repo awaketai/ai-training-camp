@@ -67,3 +67,7 @@ class SelectStyleResponse(BaseModel):
 class AddSlideResponse(BaseModel):
     success: bool
     slide: SlideItem
+
+
+class DeleteSlideResponse(BaseModel):
+    success: bool

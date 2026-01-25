@@ -24,6 +24,7 @@ interface SlidesActions {
   updateSlideText: (index: number, text: string) => Promise<void>;
   reorderSlides: (order: number[]) => Promise<void>;
   addSlide: (text: string, position?: number) => Promise<void>;
+  deleteSlide: (index: number) => Promise<void>;
   generateImage: (index: number) => Promise<void>;
   pollImageStatus: (index: number) => void;
   generateStyleOptions: (description: string) => Promise<void>;
@@ -54,6 +55,10 @@ export const useSlidesStore = create<SlidesStore>((set, get) => ({
   loadSlides: async (sid: string) => {
     try {
       const data = await slidesApi.fetchSlides(sid);
+      if (import.meta.env.DEV) {
+        console.log(`[SlidesStore] Loaded slides for ${sid}:`, data.slides.length, 'slides');
+        console.log(`[SlidesStore] Current images:`, data.slides.map((s, i) => `${i}:${s.current_image || 'none'}`).join(', '));
+      }
       set({
         sid: data.sid,
         slides: data.slides,
@@ -117,6 +122,31 @@ export const useSlidesStore = create<SlidesStore>((set, get) => ({
     }
   },
 
+  deleteSlide: async (index: number) => {
+    const { sid, currentSlideIndex, slides } = get();
+    try {
+      await slidesApi.deleteSlide(sid, index);
+      // Adjust current slide index if needed
+      let newIndex = currentSlideIndex;
+      if (index === currentSlideIndex && slides.length > 1) {
+        // If deleting current slide, move to previous or next
+        newIndex = index > 0 ? index - 1 : 0;
+      } else if (index < currentSlideIndex) {
+        // If deleting before current, adjust index
+        newIndex = currentSlideIndex - 1;
+      }
+      set({ currentSlideIndex: newIndex });
+      await get().loadSlides(sid);
+      set({ error: null });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to delete slide";
+      set({ error: message });
+      if (import.meta.env.DEV) {
+        console.error("[SlidesStore] deleteSlide error:", e);
+      }
+    }
+  },
+
   generateImage: async (index: number) => {
     const { sid } = get();
     set((state) => {
@@ -143,9 +173,15 @@ export const useSlidesStore = create<SlidesStore>((set, get) => ({
 
   pollImageStatus: (index: number) => {
     const { sid } = get();
+    if (import.meta.env.DEV) {
+      console.log(`[SlidesStore] Start polling image status for slide ${index}`);
+    }
     const intervalId = setInterval(async () => {
       try {
         const status = await imagesApi.getImageStatus(sid, index);
+        if (import.meta.env.DEV) {
+          console.log(`[SlidesStore] Poll slide ${index}: generating=${status.generating}, latest_hash=${status.latest_hash}`);
+        }
         if (!status.generating) {
           clearInterval(intervalId);
           set((state) => {
@@ -153,7 +189,13 @@ export const useSlidesStore = create<SlidesStore>((set, get) => ({
             generating.delete(index);
             return { generatingSlides: generating };
           });
+          if (import.meta.env.DEV) {
+            console.log(`[SlidesStore] Image generation complete for slide ${index}, reloading slides...`);
+          }
           await get().loadSlides(sid);
+          if (import.meta.env.DEV) {
+            console.log(`[SlidesStore] Slides reloaded after image generation`);
+          }
         }
       } catch (e) {
         clearInterval(intervalId);

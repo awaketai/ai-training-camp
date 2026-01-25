@@ -20,6 +20,7 @@ interface SidebarProps {
   onSelect: (index: number) => void;
   onReorder: (order: number[]) => void;
   onAddSlide: (position: number) => void;
+  onDeleteSlide: (index: number) => void;
 }
 
 export function Sidebar({
@@ -29,6 +30,7 @@ export function Sidebar({
   onSelect,
   onReorder,
   onAddSlide,
+  onDeleteSlide,
 }: SidebarProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -73,6 +75,7 @@ export function Sidebar({
                 isSelected={slide.index === currentIndex}
                 sid={sid}
                 onSelect={() => onSelect(slide.index)}
+                onDelete={() => onDeleteSlide(slide.index)}
               />
               {/* Insertion line */}
               <div

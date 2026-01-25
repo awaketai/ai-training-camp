@@ -13,6 +13,7 @@ from .schemas import (
     GenerateStyleResponse,
     SelectStyleResponse,
     AddSlideResponse,
+    DeleteSlideResponse,
 )
 
 __all__ = [
@@ -30,4 +31,5 @@ __all__ = [
     "GenerateStyleResponse",
     "SelectStyleResponse",
     "AddSlideResponse",
+    "DeleteSlideResponse",
 ]

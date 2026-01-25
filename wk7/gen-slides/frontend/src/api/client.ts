@@ -47,6 +47,18 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: { "Accept": "application/json" },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new ApiError(res.status, error.detail);
+  }
+  return res.json();
+}
+
 export function imageUrl(sid: string, hash: string): string {
   return `${BASE_URL}/slides/${sid}/images/${hash}.jpg`;
 }

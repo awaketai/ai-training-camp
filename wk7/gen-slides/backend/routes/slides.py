@@ -8,6 +8,7 @@ from ..models import (
     ReorderResponse,
     AddSlideRequest,
     AddSlideResponse,
+    DeleteSlideResponse,
     SlideItem,
 )
 from ..services.slide_service import SlideService
@@ -85,5 +86,23 @@ async def add_slide(
         return AddSlideResponse(success=True, slide=slide)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Project {sid} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{sid}/{slide_index}", response_model=DeleteSlideResponse)
+async def delete_slide(
+    sid: str,
+    slide_index: int,
+    slide_service: SlideService = Depends(get_slide_service)
+):
+    """Delete a slide from the project."""
+    try:
+        success = await slide_service.delete_slide(sid, slide_index)
+        return DeleteSlideResponse(success=success)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Project {sid} not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

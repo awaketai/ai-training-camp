@@ -136,3 +136,27 @@ class SlideService:
             current_image=None,
             has_matching_image=has_matching_image
         )
+
+    async def delete_slide(self, sid: str, slide_index: int) -> bool:
+        """Delete a slide from the project.
+
+        Args:
+            sid: Project ID
+            slide_index: Index of the slide to delete (0-based)
+
+        Returns:
+            True if deletion was successful
+        """
+        outline = await self.outline_repo.get_outline(sid)
+        slides = outline.get("slides", [])
+
+        if slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"Slide index {slide_index} out of range")
+
+        # Remove the slide
+        slides.pop(slide_index)
+
+        # Save the updated outline
+        await self.outline_repo.save_outline(sid, outline)
+
+        return True

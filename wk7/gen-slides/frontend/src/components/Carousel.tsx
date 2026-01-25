@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { imageUrl } from "../api/client";
 import type { Slide } from "../types";
 
@@ -14,6 +14,9 @@ export function Carousel({ slides, startIndex, sid, onExit }: CarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<number | null>(null);
   const indexStateRef = useRef(startIndex);
+  const progressIntervalRef = useRef<number | null>(null);
+  const [progress, setProgress] = useState(0);
+  const autoPlayDuration = 5000; // 5 seconds
 
   const updateDisplay = useCallback((index: number) => {
     indexStateRef.current = index;
@@ -30,7 +33,23 @@ export function Carousel({ slides, startIndex, sid, onExit }: CarouselProps) {
     if (counter) {
       counter.textContent = `${index + 1} / ${slides.length}`;
     }
-  }, [slides.length]);
+
+    // Reset progress bar when changing slides
+    setProgress(0);
+
+    // Restart progress interval
+    if (progressIntervalRef.current !== null) {
+      clearInterval(progressIntervalRef.current);
+    }
+    const progressUpdateInterval = 50;
+    const progressStep = (100 / autoPlayDuration) * progressUpdateInterval;
+    progressIntervalRef.current = window.setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + progressStep;
+        return next >= 100 ? 100 : next;
+      });
+    }, progressUpdateInterval);
+  }, [slides.length, autoPlayDuration]);
 
   const goNext = useCallback(() => {
     const nextIndex = (indexStateRef.current + 1) % slides.length;
@@ -60,14 +79,27 @@ export function Carousel({ slides, startIndex, sid, onExit }: CarouselProps) {
   useEffect(() => {
     intervalRef.current = window.setInterval(() => {
       goNext();
-    }, 5000);
+    }, autoPlayDuration);
+
+    // Initialize progress on mount
+    const progressUpdateInterval = 50;
+    const progressStep = (100 / autoPlayDuration) * progressUpdateInterval;
+    progressIntervalRef.current = window.setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + progressStep;
+        return next >= 100 ? 100 : next;
+      });
+    }, progressUpdateInterval);
 
     return () => {
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
       }
+      if (progressIntervalRef.current !== null) {
+        clearInterval(progressIntervalRef.current);
+      }
     };
-  }, [goNext]);
+  }, [goNext, autoPlayDuration]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -122,9 +154,17 @@ export function Carousel({ slides, startIndex, sid, onExit }: CarouselProps) {
 
       <div
         data-slide-counter
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full"
+        className="absolute bottom-12 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full"
       >
         {startIndex + 1} / {slides.length}
+      </div>
+
+      {/* Progress bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
+        <div
+          className="h-full bg-white transition-all duration-100 ease-linear"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       <button

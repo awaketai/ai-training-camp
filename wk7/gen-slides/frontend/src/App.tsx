@@ -27,6 +27,7 @@ export default function App() {
   const updateSlideText = useSlidesStore((s) => s.updateSlideText);
   const reorderSlides = useSlidesStore((s) => s.reorderSlides);
   const addSlide = useSlidesStore((s) => s.addSlide);
+  const deleteSlide = useSlidesStore((s) => s.deleteSlide);
   const generateImage = useSlidesStore((s) => s.generateImage);
   const generateStyleOptions = useSlidesStore((s) => s.generateStyleOptions);
   const selectStyle = useSlidesStore((s) => s.selectStyle);
@@ -104,6 +105,7 @@ export default function App() {
           onSelect={selectSlide}
           onReorder={reorderSlides}
           onAddSlide={(position) => addSlide("", position)}
+          onDeleteSlide={deleteSlide}
         />
         <PreviewArea
           slide={currentSlide}
