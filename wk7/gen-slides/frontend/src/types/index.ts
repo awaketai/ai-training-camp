@@ -26,6 +26,7 @@ export interface ReorderSlidesRequest {
 
 export interface AddSlideRequest {
   text: string;
+  position?: number;
 }
 
 export interface GenerateImageRequest {

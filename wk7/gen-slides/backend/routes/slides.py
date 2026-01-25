@@ -79,9 +79,9 @@ async def add_slide(
     request: AddSlideRequest,
     slide_service: SlideService = Depends(get_slide_service)
 ):
-    """Add a new slide."""
+    """Add a new slide at the specified position or at the end."""
     try:
-        slide = await slide_service.add_slide(sid, request.text)
+        slide = await slide_service.add_slide(sid, request.text, request.position)
         return AddSlideResponse(success=True, slide=slide)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Project {sid} not found")

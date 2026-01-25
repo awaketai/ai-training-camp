@@ -23,7 +23,7 @@ interface SlidesActions {
   selectSlide: (index: number) => void;
   updateSlideText: (index: number, text: string) => Promise<void>;
   reorderSlides: (order: number[]) => Promise<void>;
-  addSlide: (text: string) => Promise<void>;
+  addSlide: (text: string, position?: number) => Promise<void>;
   generateImage: (index: number) => Promise<void>;
   pollImageStatus: (index: number) => void;
   generateStyleOptions: (description: string) => Promise<void>;
@@ -102,10 +102,10 @@ export const useSlidesStore = create<SlidesStore>((set, get) => ({
     }
   },
 
-  addSlide: async (text: string) => {
+  addSlide: async (text: string, position?: number) => {
     const { sid } = get();
     try {
-      await slidesApi.addSlide(sid, text);
+      await slidesApi.addSlide(sid, text, position);
       await get().loadSlides(sid);
       set({ error: null });
     } catch (e) {

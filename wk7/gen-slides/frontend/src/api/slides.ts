@@ -32,7 +32,8 @@ export async function reorderSlides(
 export async function addSlide(
   sid: string,
   text: string,
+  position?: number,
 ): Promise<AddSlideResponse> {
-  const body: AddSlideRequest = { text };
+  const body: AddSlideRequest = { text, position };
   return apiPost<AddSlideResponse>(`/slides/${sid}/add`, body);
 }

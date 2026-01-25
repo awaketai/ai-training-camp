@@ -92,8 +92,14 @@ class SlideService:
 
         return True
 
-    async def add_slide(self, sid: str, text: str = "") -> SlideItem:
-        """Add a new slide to the project."""
+    async def add_slide(self, sid: str, text: str = "", position: Optional[int] = None) -> SlideItem:
+        """Add a new slide to the project.
+
+        Args:
+            sid: Project ID
+            text: Slide text
+            position: Position to insert (0-based index). If None, append to end.
+        """
         outline = await self.outline_repo.get_outline(sid)
         slides = outline.get("slides", [])
 
@@ -102,7 +108,14 @@ class SlideService:
             "text": text,
             "current_image": None
         }
-        slides.append(new_slide)
+
+        # Insert at position or append
+        if position is not None and 0 <= position <= len(slides):
+            slides.insert(position, new_slide)
+            new_index = position
+        else:
+            slides.append(new_slide)
+            new_index = len(slides) - 1
 
         # Save the updated outline
         await self.outline_repo.save_outline(sid, outline)
@@ -117,7 +130,7 @@ class SlideService:
         available_images = await self.image_repo.list_images(sid)
 
         return SlideItem(
-            index=len(slides) - 1,
+            index=new_index,
             text=text,
             images=available_images,
             current_image=None,

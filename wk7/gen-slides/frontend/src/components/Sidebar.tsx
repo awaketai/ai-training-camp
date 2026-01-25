@@ -19,7 +19,7 @@ interface SidebarProps {
   sid: string;
   onSelect: (index: number) => void;
   onReorder: (order: number[]) => void;
-  onTextUpdate: (index: number, text: string) => void;
+  onAddSlide: (position: number) => void;
 }
 
 export function Sidebar({
@@ -28,7 +28,7 @@ export function Sidebar({
   sid,
   onSelect,
   onReorder,
-  onTextUpdate,
+  onAddSlide,
 }: SidebarProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -56,7 +56,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-64 bg-gray-50 border-r border-gray-200 overflow-y-auto p-3 flex flex-col gap-2">
+    <aside className="w-64 bg-gray-50 border-r border-gray-200 overflow-y-auto p-3 flex flex-col gap-1">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -66,15 +66,31 @@ export function Sidebar({
           items={slides.map((s) => s.index)}
           strategy={verticalListSortingStrategy}
         >
-          {slides.map((slide) => (
-            <SlideCard
-              key={slide.index}
-              slide={slide}
-              isSelected={slide.index === currentIndex}
-              sid={sid}
-              onSelect={() => onSelect(slide.index)}
-              onTextUpdate={(text) => onTextUpdate(slide.index, text)}
-            />
+          {slides.map((slide, idx) => (
+            <div key={slide.index}>
+              <SlideCard
+                slide={slide}
+                isSelected={slide.index === currentIndex}
+                sid={sid}
+                onSelect={() => onSelect(slide.index)}
+              />
+              {/* Insertion line */}
+              <div
+                onClick={() => onAddSlide(idx + 1)}
+                className="h-1 my-1 cursor-pointer group relative"
+              >
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-transparent group-hover:border-blue-400 transition-colors"></div>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <button className="bg-white border border-transparent group-hover:border-blue-400 group-hover:bg-blue-50 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
         </SortableContext>
       </DndContext>

@@ -28,6 +28,7 @@ class SelectStyleRequest(BaseModel):
 
 class AddSlideRequest(BaseModel):
     text: str = ""
+    position: Optional[int] = None  # If None, append to end; otherwise insert at position
 
 
 class SlidesResponse(BaseModel):

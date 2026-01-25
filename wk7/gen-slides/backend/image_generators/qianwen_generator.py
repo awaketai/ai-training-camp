@@ -49,12 +49,17 @@ class QianwenImageGenerator(ImageGeneratorInterface):
             ]
 
             # Add style reference image if provided
-            if style_image_bytes:
+            # Note: t2i (text-to-image) models don't support image input
+            if style_image_bytes and "t2i" not in self.model.lower():
                 style_b64 = base64.b64encode(style_image_bytes).decode('utf-8')
                 messages[0]["content"].insert(0, {
                     "image": f"data:image/jpeg;base64,{style_b64}"
                 })
                 messages[0]["content"][1]["text"] = f"请参考这个风格生成图片。{enhanced_prompt}"
+            elif style_image_bytes:
+                # For t2i models, describe style in text instead
+                print(f"[Qianwen] t2i model detected, style image will be ignored (t2i models only accept text)")
+                messages[0]["content"][0]["text"] = f"{enhanced_prompt}"
 
             # Call Qianwen API using MultiModalConversation.call
             response = await asyncio.to_thread(
