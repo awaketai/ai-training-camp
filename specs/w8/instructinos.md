@@ -43,3 +43,13 @@ init 的提示词还应该生成 .gba / .trees 等目录，以及更改 .gitigno
 请思考在不同的场景下，那些需要 claude code preset，哪些不需要，哪些需要完整的工具，哪些不需要，这个应该在哪里定义，是写在 engine 中，还是配置中。
 
 preset 不需要这么复杂吧，应该就是使用 claude code preset 与否，请查看 https://github.com/tyrchen/claude-agent-sdk-rs/blob/master/API.md 文档。如果每个任务都有 config.yml，那么是否还适合放在 crates/gba-pm 下？或者 templates 直接放在根目录下，改个其他的名字？
+
+## 添加 submodule
+
+创建目录 vendors，将项目 https://github.com/tyrchen/claude-agent-sdk-rs 作为 submodule 
+
+## 构建gba
+
+构建一个新的 git worktree(branch from main)，放在 .trees 下，仔细阅读 @specs/0001-design.md，根据其要求，使用 sub agent 分阶段完成其功能。每次完成一个阶段后提交代码，并确保 precommit hooks 通过。完成所有阶段后
+
+启动一个新的 sub agent 调用 codex code review skill 对照 design spec 来 review 代码，然后根据 review 结果仔细思考，对合理的问题进行修改，并提交代码。最后，保证所有的测试通过，并确保所有的功能都符合 design spec 的要求后，生成一个 pull request，提供详细的 PR description。
